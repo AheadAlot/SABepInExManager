@@ -1,0 +1,11 @@
+namespace SABepInExManager.Models;
+
+public static class AppMetadata
+{
+    public const string Name = "学生时代BepInEx模组管理器";
+    public const string Description = "《学生时代》创意工坊BepInEx模组管理器";
+    public const string RepositoryUrl = "https://github.com/AheadAlot/SA_BepInEx_Loader";
+    public const string License = "MIT";
+}
+
+
