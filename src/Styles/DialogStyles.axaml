@@ -1,0 +1,88 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Styles.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="DialogSurfaceBrush">#FFFFFFFF</SolidColorBrush>
+                    <SolidColorBrush x:Key="DialogBorderBrush">#1A0F172A</SolidColorBrush>
+                    <SolidColorBrush x:Key="DialogMutedTextBrush">#FF475569</SolidColorBrush>
+                    <SolidColorBrush x:Key="DialogDangerSurfaceBrush">#FFFFF1F2</SolidColorBrush>
+                    <SolidColorBrush x:Key="DialogDangerBorderBrush">#FFFDA4AF</SolidColorBrush>
+                    <SolidColorBrush x:Key="DialogDangerTextBrush">#FFB91C1C</SolidColorBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="DialogSurfaceBrush">#FF111827</SolidColorBrush>
+                    <SolidColorBrush x:Key="DialogBorderBrush">#4D94A3B8</SolidColorBrush>
+                    <SolidColorBrush x:Key="DialogMutedTextBrush">#FF94A3B8</SolidColorBrush>
+                    <SolidColorBrush x:Key="DialogDangerSurfaceBrush">#33292727</SolidColorBrush>
+                    <SolidColorBrush x:Key="DialogDangerBorderBrush">#66EF4444</SolidColorBrush>
+                    <SolidColorBrush x:Key="DialogDangerTextBrush">#FFF87171</SolidColorBrush>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Styles.Resources>
+
+    <Style Selector="Window.app-dialog">
+        <Setter Property="Background" Value="{DynamicResource DialogSurfaceBrush}"/>
+        <Setter Property="CanResize" Value="False"/>
+        <Setter Property="WindowStartupLocation" Value="CenterOwner"/>
+        <Setter Property="ShowInTaskbar" Value="False"/>
+    </Style>
+
+    <Style Selector="Border.app-dialog-container">
+        <Setter Property="Padding" Value="16"/>
+        <Setter Property="Background" Value="{DynamicResource DialogSurfaceBrush}"/>
+    </Style>
+
+    <Style Selector="TextBlock.dialog-title">
+        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <Style Selector="TextBlock.dialog-caption">
+        <Setter Property="Foreground" Value="{DynamicResource DialogMutedTextBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="FontSize" Value="13"/>
+    </Style>
+
+    <Style Selector="Border.dialog-message-box">
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="Padding" Value="12"/>
+    </Style>
+
+    <Style Selector="Border.dialog-message-box.default-tone">
+        <Setter Property="Background" Value="{DynamicResource DialogSurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource DialogBorderBrush}"/>
+    </Style>
+
+    <Style Selector="Border.dialog-message-box.danger-tone">
+        <Setter Property="Background" Value="{DynamicResource DialogDangerSurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource DialogDangerBorderBrush}"/>
+    </Style>
+
+    <Style Selector="TextBlock.dialog-danger-icon">
+        <Setter Property="Foreground" Value="{DynamicResource DialogDangerTextBrush}"/>
+        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="Margin" Value="0,2,0,0"/>
+    </Style>
+
+    <Style Selector="Button.dialog-secondary-action">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource DialogBorderBrush}"/>
+    </Style>
+
+    <Style Selector="Button.dialog-danger-action">
+        <Setter Property="Background" Value="#DC2626"/>
+        <Setter Property="BorderBrush" Value="#B91C1C"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.dialog-primary-action">
+        <Setter Property="Background" Value="#2563EB"/>
+        <Setter Property="BorderBrush" Value="#1D4ED8"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+</Styles>
