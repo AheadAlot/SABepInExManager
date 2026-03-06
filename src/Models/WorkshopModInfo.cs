@@ -2,6 +2,12 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace SABepInExManager.Models;
 
+public enum ModStructureType
+{
+    Standard,
+    Flat,
+}
+
 public class WorkshopModInfo : ObservableObject
 {
     private bool _isEnabled;
@@ -12,6 +18,7 @@ public class WorkshopModInfo : ObservableObject
     public required string DisplayName { get; init; }
     public string Description { get; init; } = string.Empty;
     public string? PreviewImagePath { get; init; }
+    public ModStructureType StructureType { get; init; } = ModStructureType.Standard;
 
     public bool IsEnabled
     {
@@ -19,5 +26,3 @@ public class WorkshopModInfo : ObservableObject
         set => SetProperty(ref _isEnabled, value);
     }
 }
-
-

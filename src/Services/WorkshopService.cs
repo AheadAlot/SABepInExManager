@@ -58,11 +58,15 @@ public class WorkshopService
                 continue;
             }
 
-            var bepInExRoot = Path.Combine(modDir, "BepInEx");
-            if (!Directory.Exists(bepInExRoot))
+            var structureType = DetectModStructureType(modDir);
+            if (structureType == null)
             {
                 continue;
             }
+
+            var bepInExRoot = structureType == ModStructureType.Standard
+                ? Path.Combine(modDir, "BepInEx")
+                : modDir;
 
             var manifest = TryReadManifest(modDir);
             var previewPath = Path.Combine(modDir, "preview.jpg");
@@ -75,6 +79,7 @@ public class WorkshopService
                 Description = manifest?.Description ?? string.Empty,
                 PreviewImagePath = File.Exists(previewPath) ? previewPath : null,
                 IsEnabled = enabledOrder.Contains(modId, StringComparer.OrdinalIgnoreCase),
+                StructureType = structureType.Value,
             };
 
             mods.Add(item);
@@ -92,13 +97,28 @@ public class WorkshopService
             .ToList();
     }
 
+    private static ModStructureType? DetectModStructureType(string modDir)
+    {
+        if (Directory.Exists(Path.Combine(modDir, "BepInEx")))
+        {
+            return ModStructureType.Standard;
+        }
+
+        if (Directory.GetFiles(modDir, "*.dll", SearchOption.AllDirectories).Length > 0)
+        {
+            return ModStructureType.Flat;
+        }
+
+        return null;
+    }
+
     public List<ConflictItem> BuildConflicts(IReadOnlyList<WorkshopModInfo> enabledMods)
     {
         var map = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var mod in enabledMods)
         {
-            foreach (var rel in EnumerateManagedRelativePaths(mod.BepInExRootPath))
+            foreach (var rel in EnumerateManagedRelativePaths(mod.BepInExRootPath, mod.StructureType))
             {
                 if (!map.TryGetValue(rel, out var modIds))
                 {
@@ -122,8 +142,18 @@ public class WorkshopService
             .ToList();
     }
 
-    public IEnumerable<string> EnumerateManagedRelativePaths(string modBepInExRoot)
+    public IEnumerable<string> EnumerateManagedRelativePaths(string modBepInExRoot, ModStructureType structureType = ModStructureType.Standard)
     {
+        if (structureType == ModStructureType.Flat)
+        {
+            foreach (var file in Directory.EnumerateFiles(modBepInExRoot, "*.dll", SearchOption.AllDirectories))
+            {
+                var relPath = Path.GetRelativePath(modBepInExRoot, file).Replace('\\', '/');
+                yield return $"plugins/{relPath}";
+            }
+            yield break;
+        }
+
         foreach (var sub in PathConstants.ManagedBepInExSubDirs)
         {
             var source = Path.Combine(modBepInExRoot, sub);
@@ -140,7 +170,7 @@ public class WorkshopService
         }
     }
 
-    public string BuildManagedSignature(string modBepInExRoot)
+    public string BuildManagedSignature(string modBepInExRoot, ModStructureType structureType = ModStructureType.Standard)
     {
         if (string.IsNullOrWhiteSpace(modBepInExRoot) || !Directory.Exists(modBepInExRoot))
         {
@@ -148,7 +178,7 @@ public class WorkshopService
         }
 
         var builder = new StringBuilder();
-        foreach (var rel in EnumerateManagedRelativePaths(modBepInExRoot)
+        foreach (var rel in EnumerateManagedRelativePaths(modBepInExRoot, structureType)
                      .OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
         {
             var fullPath = Path.Combine(modBepInExRoot, rel.Replace('/', Path.DirectorySeparatorChar));
@@ -186,5 +216,3 @@ public class WorkshopService
         }
     }
 }
-
-

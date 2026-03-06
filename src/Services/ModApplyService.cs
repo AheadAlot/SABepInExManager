@@ -9,10 +9,7 @@ namespace SABepInExManager.Services;
 
 public class ModApplyService
 {
-    private static readonly string[] PreservedPluginDirectories =
-    [
-        "ConfigurationManager",
-    ];
+    private static readonly string[] PreservedPluginDirectories = ["ConfigurationManager"];
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -93,6 +90,27 @@ public class ModApplyService
         var gameBepInEx = Path.Combine(gameRoot, "BepInEx");
         foreach (var mod in enabledMods)
         {
+            if (mod.StructureType == ModStructureType.Flat)
+            {
+                var pluginsDst = Path.Combine(gameBepInEx, "plugins");
+                Directory.CreateDirectory(pluginsDst);
+
+                foreach (var dllFile in Directory.GetFiles(mod.BepInExRootPath, "*.dll", SearchOption.AllDirectories))
+                {
+                    var relPath = Path.GetRelativePath(mod.BepInExRootPath, dllFile);
+                    var dstPath = Path.Combine(pluginsDst, relPath);
+                    
+                    var dstDir = Path.GetDirectoryName(dstPath);
+                    if (!string.IsNullOrEmpty(dstDir))
+                    {
+                        Directory.CreateDirectory(dstDir);
+                    }
+                    
+                    File.Copy(dllFile, dstPath, overwrite: true);
+                }
+                continue;
+            }
+
             foreach (var sub in PathConstants.ManagedBepInExSubDirs)
             {
                 var src = Path.Combine(mod.BepInExRootPath, sub);
@@ -245,5 +263,3 @@ public class ModApplyService
         }
     }
 }
-
-

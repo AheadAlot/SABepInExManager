@@ -559,7 +559,7 @@ public class HomePageViewModel : ViewModelBase
         var signatures = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var mod in mods)
         {
-            signatures[mod.ModId] = _workshopService.BuildManagedSignature(mod.BepInExRootPath);
+            signatures[mod.ModId] = _workshopService.BuildManagedSignature(mod.BepInExRootPath, mod.StructureType);
         }
 
         return signatures;
