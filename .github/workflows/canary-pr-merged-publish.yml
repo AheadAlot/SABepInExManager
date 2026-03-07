@@ -1,0 +1,67 @@
+name: Canary PR Merged Publish
+
+on:
+  pull_request:
+    branches:
+      - canary
+    types:
+      - closed
+
+jobs:
+  metadata:
+    if: github.event.pull_request.merged == true
+    name: Compute canary build metadata
+    runs-on: ubuntu-latest
+    outputs:
+      build_datetime: ${{ steps.meta.outputs.build_datetime }}
+
+    steps:
+      - name: Generate build datetime (UTC)
+        id: meta
+        run: echo "build_datetime=$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
+
+  publish:
+    if: github.event.pull_request.merged == true
+    name: Publish Canary (${{ matrix.runtime }})
+    runs-on: ubuntu-latest
+    needs: metadata
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runtime: win-x64
+            platform: windows
+            arch: x64
+          - runtime: linux-x64
+            platform: linux
+            arch: x64
+          - runtime: osx-x64
+            platform: macos
+            arch: x64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore ./src/SABepInExManager.csproj
+
+      - name: Publish
+        run: dotnet publish ./src/SABepInExManager.csproj -c Release -r ${{ matrix.runtime }} --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false --output ./publish/${{ matrix.runtime }}
+
+      - name: Zip published folder
+        run: |
+          cd ./publish
+          zip -r ${{ matrix.platform }}-${{ matrix.arch }}-Canary-${{ needs.metadata.outputs.build_datetime }}.zip ./${{ matrix.runtime }}
+
+      - name: Upload zipped artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-canary-${{ matrix.runtime }}
+          path: ./publish/${{ matrix.platform }}-${{ matrix.arch }}-Canary-${{ needs.metadata.outputs.build_datetime }}.zip
+          retention-days: 7
