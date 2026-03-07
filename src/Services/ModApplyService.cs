@@ -9,6 +9,8 @@ namespace SABepInExManager.Services;
 
 public class ModApplyService
 {
+    private const string BaselineValidationConfigFile = "BepInEx.cfg";
+
     private static readonly string[] PreservedPluginDirectories =
     [
         "ConfigurationManager",
@@ -88,7 +90,6 @@ public class ModApplyService
         IReadOnlyDictionary<string, string>? appliedModSignatures = null)
     {
         EnsureGameRootValid(gameRoot);
-        RestoreBaseline(gameRoot);
 
         var gameBepInEx = Path.Combine(gameRoot, "BepInEx");
         foreach (var mod in enabledMods)
@@ -152,6 +153,41 @@ public class ModApplyService
 
     private static string GetStateFile(string gameRoot)
         => Path.Combine(GetStateRoot(gameRoot), PathConstants.StateFileName);
+
+    private void EnsureBaselineReady(string gameRoot)
+    {
+        if (!IsBaselineMissingOrInvalid(gameRoot))
+        {
+            return;
+        }
+
+        CreateOrUpdateBaseline(gameRoot);
+    }
+
+    private static bool IsBaselineMissingOrInvalid(string gameRoot)
+    {
+        var baselineRoot = GetBaselineRoot(gameRoot);
+        if (!Directory.Exists(baselineRoot))
+        {
+            return true;
+        }
+
+        foreach (var sub in PathConstants.ManagedBepInExSubDirs)
+        {
+            var baselineSub = Path.Combine(baselineRoot, sub);
+            if (!Directory.Exists(baselineSub))
+            {
+                return true;
+            }
+        }
+
+        var baselineConfigFile = Path.Combine(
+            baselineRoot,
+            "config",
+            BaselineValidationConfigFile);
+
+        return !File.Exists(baselineConfigFile);
+    }
 
     private static void EnsureGameRootValid(string gameRoot)
     {
