@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - master
+      - canary
     types:
       - opened
       - synchronize
@@ -12,7 +13,7 @@ on:
 
 jobs:
   build:
-    name: Build on PR to master
+    name: Build on PR to master/canary
     runs-on: ubuntu-latest
 
     steps:
