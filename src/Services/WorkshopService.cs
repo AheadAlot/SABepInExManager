@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -11,6 +12,8 @@ namespace SABepInExManager.Services;
 
 public class WorkshopService
 {
+    private static readonly Version EmptyVersion = new(0, 0, 0, 0);
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -195,6 +198,83 @@ public class WorkshopService
         }
 
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString())));
+    }
+
+    public bool HasAssemblyVersionUpdate(string gameRootPath, WorkshopModInfo mod)
+    {
+        if (string.IsNullOrWhiteSpace(gameRootPath) || !Directory.Exists(gameRootPath))
+        {
+            return false;
+        }
+
+        foreach (var (workshopDllPath, installedDllPath) in EnumerateManagedDllPairs(gameRootPath, mod))
+        {
+            if (!File.Exists(workshopDllPath))
+            {
+                continue;
+            }
+
+            if (!File.Exists(installedDllPath))
+            {
+                return true;
+            }
+
+            var workshopVersion = GetAssemblyVersion(workshopDllPath);
+            var installedVersion = GetAssemblyVersion(installedDllPath);
+            if (workshopVersion > installedVersion)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static IEnumerable<(string WorkshopDllPath, string InstalledDllPath)> EnumerateManagedDllPairs(
+        string gameRootPath,
+        WorkshopModInfo mod)
+    {
+        var gameBepInExRoot = Path.Combine(gameRootPath, "BepInEx");
+
+        if (mod.StructureType == ModStructureType.Flat)
+        {
+            foreach (var workshopDllPath in Directory.EnumerateFiles(mod.BepInExRootPath, "*.dll", SearchOption.AllDirectories))
+            {
+                var relPath = Path.GetRelativePath(mod.BepInExRootPath, workshopDllPath);
+                var installedDllPath = Path.Combine(gameBepInExRoot, "plugins", relPath);
+                yield return (workshopDllPath, installedDllPath);
+            }
+
+            yield break;
+        }
+
+        foreach (var sub in PathConstants.ManagedBepInExSubDirs)
+        {
+            var workshopSubPath = Path.Combine(mod.BepInExRootPath, sub);
+            if (!Directory.Exists(workshopSubPath))
+            {
+                continue;
+            }
+
+            foreach (var workshopDllPath in Directory.EnumerateFiles(workshopSubPath, "*.dll", SearchOption.AllDirectories))
+            {
+                var relPath = Path.GetRelativePath(workshopSubPath, workshopDllPath);
+                var installedDllPath = Path.Combine(gameBepInExRoot, sub, relPath);
+                yield return (workshopDllPath, installedDllPath);
+            }
+        }
+    }
+
+    private static Version GetAssemblyVersion(string dllPath)
+    {
+        try
+        {
+            return AssemblyName.GetAssemblyName(dllPath).Version ?? EmptyVersion;
+        }
+        catch
+        {
+            return EmptyVersion;
+        }
     }
 
     private static WorkshopManifest? TryReadManifest(string modDir)

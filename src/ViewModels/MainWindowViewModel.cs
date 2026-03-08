@@ -380,8 +380,17 @@ public class HomePageViewModel : ViewModelBase
             var currentSignatures = BuildEnabledModSignatures(enabledMods);
 
             var changedMods = enabledMods
-                .Where(mod => !appliedSignatures.TryGetValue(mod.ModId, out var oldSignature)
-                              || !string.Equals(oldSignature, currentSignatures[mod.ModId], StringComparison.Ordinal))
+                .Where(mod =>
+                {
+                    var signatureChanged = !appliedSignatures.TryGetValue(mod.ModId, out var oldSignature)
+                                           || !string.Equals(oldSignature, currentSignatures[mod.ModId], StringComparison.Ordinal);
+                    if (signatureChanged)
+                    {
+                        return true;
+                    }
+
+                    return _workshopService.HasAssemblyVersionUpdate(GameRootPath, mod);
+                })
                 .ToList();
 
             if (changedMods.Count == 0)
