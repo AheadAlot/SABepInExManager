@@ -1,15 +1,17 @@
-name: Canary PR Merged Publish
+name: Canary PR Opened Publish
 
 on:
   pull_request:
     branches:
       - canary
     types:
-      - closed
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
 
 jobs:
   metadata:
-    if: github.event.pull_request.merged == true
     name: Compute canary build metadata
     runs-on: ubuntu-latest
     outputs:
@@ -21,7 +23,6 @@ jobs:
         run: echo "build_datetime=$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
 
   publish:
-    if: github.event.pull_request.merged == true
     name: Publish Canary (${{ matrix.runtime }})
     runs-on: ubuntu-latest
     needs: metadata
@@ -53,22 +54,22 @@ jobs:
 
       - name: Prepare BepInEx core references for patcher build
         run: |
-          unzip -q ./third_party/BepInEx/BepInEx_win_x64_5.4.23.5.zip -d ./temp-bepinex
+          cp -R ./third_party/BepInEx ./temp-bepinex
 
-      - name: Build patcher DLL to root patcher folder
-        run: dotnet build ./src/SABepInExManager.Patcher/SABepInExManager.Patcher.csproj -c Release /p:BepInExDir="${{ github.workspace }}/temp-bepinex/BepInEx/core"
+      - name: Build AutoUpdater patcher files
+        run: dotnet build ./src/SABepInExManager.AutoUpdater/SABepInExManager.AutoUpdater.csproj -c Release /p:DebugType=None /p:DebugSymbols=false /p:BepInExDir="${{ github.workspace }}/temp-bepinex/BepInEx/core"
+
+      - name: Stage patchers folder for publish
+        run: |
+          mkdir -p ./patchers/SABepInExManager_AutoUpdater
+          cp -R ./src/SABepInExManager.AutoUpdater/bin/Release/net472/. ./patchers/SABepInExManager_AutoUpdater/
 
       - name: Publish
         run: dotnet publish ./src/SABepInExManager/SABepInExManager.csproj -c Release -r ${{ matrix.runtime }} --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false --output ./publish/${{ matrix.runtime }}
 
-      - name: Zip published folder
-        run: |
-          cd ./publish
-          zip -r ${{ matrix.platform }}-${{ matrix.arch }}-Canary-${{ needs.metadata.outputs.build_datetime }}.zip ./${{ matrix.runtime }}
-
       - name: Upload zipped artifact
         uses: actions/upload-artifact@v4
         with:
-          name: publish-canary-${{ matrix.runtime }}
-          path: ./publish/${{ matrix.platform }}-${{ matrix.arch }}-Canary-${{ needs.metadata.outputs.build_datetime }}.zip
+          name: ${{ matrix.platform }}-${{ matrix.arch }}-Canary-${{ needs.metadata.outputs.build_datetime }}
+          path: ./publish/${{ matrix.runtime }}
           retention-days: 7
