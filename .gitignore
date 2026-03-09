@@ -55,3 +55,4 @@ nunit-*.xml
 
 dist/
 plans/
+patcher/

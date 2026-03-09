@@ -27,13 +27,20 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore ./src/SABepInExManager.csproj
+        run: dotnet restore ./src/SABepInExManager/SABepInExManager.csproj
+
+      - name: Prepare BepInEx core references for patcher build
+        run: |
+          unzip -q ./third_party/BepInEx/BepInEx_win_x64_5.4.23.5.zip -d ./temp-bepinex
+
+      - name: Build patcher DLL to root patcher folder
+        run: dotnet build ./src/SABepInExManager.Patcher/SABepInExManager.Patcher.csproj -c Release /p:BepInExDir="${{ github.workspace }}/temp-bepinex/BepInEx/core"
 
       - name: Publish
-        run: dotnet publish ./src/SABepInExManager.csproj -c Release -r ${{ matrix.runtime }} --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false --output ./publish/${{ matrix.runtime }}
+        run: dotnet publish ./src/SABepInExManager/SABepInExManager.csproj -c Release -r ${{ matrix.runtime }} --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false --output ./publish/${{ matrix.runtime }}
 
       - name: Zip published folder
         run: |
