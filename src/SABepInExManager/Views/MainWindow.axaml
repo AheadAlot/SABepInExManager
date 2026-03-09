@@ -165,7 +165,7 @@
             <Border Grid.Column="0" Classes="card">
                 <Grid DataContext="{Binding HomePage}" RowDefinitions="Auto,*,Auto" RowSpacing="8">
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                        <TextBlock Text="BepInEx Mod 列表（拖动排序）"
+                        <TextBlock Text="Mod 列表（拖动排序）"
                                    FontWeight="SemiBold"
                                    VerticalAlignment="Center"/>
                         <Button Grid.Column="1"
@@ -207,11 +207,13 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
-                        <Button Classes="action-button secondary-action"
-                                Content="刷新列表"
-                                IsEnabled="{Binding IsBepInExInstalled}"
-                                Command="{Binding RefreshModsCommand}"/>
+                    <StackPanel Grid.Row="2" Orientation="Vertical" Spacing="8">
+                        <Button Classes="action-button primary-action"
+                                 Content="刷新列表"
+                                 HorizontalAlignment="Stretch"
+                                 HorizontalContentAlignment="Center"
+                                 IsEnabled="{Binding IsBepInExInstalled}"
+                                 Command="{Binding RefreshModsCommand}"/>
                     </StackPanel>
                 </Grid>
             </Border>
