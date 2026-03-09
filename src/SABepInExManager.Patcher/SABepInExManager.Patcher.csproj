@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>SABepInExManager.Patcher</AssemblyName>
+    <Version>1.0.0</Version>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <BepInExDir Condition="'$(BepInExDir)' == '' and '$(BEPINEX_DIR)' != ''">$(BEPINEX_DIR)</BepInExDir>
+    <BepInExDir Condition="'$(BepInExDir)' == ''">E:\steam\steamapps\common\StudentAge\BepInEx\core</BepInExDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SABepInExManager.Core\SABepInExManager.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>$(BepInExDir)\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Mono.Cecil">
+      <HintPath>$(BepInExDir)\Mono.Cecil.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Serialization" />
+  </ItemGroup>
+
+  <Target Name="ValidateBepInExReferences" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(BepInExDir)\\BepInEx.dll')"
+           Text="未找到 BepInEx.dll。请指定 /p:BepInExDir=... 或设置环境变量 BEPINEX_DIR。当前路径：$(BepInExDir)" />
+    <Error Condition="!Exists('$(BepInExDir)\\Mono.Cecil.dll')"
+           Text="未找到 Mono.Cecil.dll。请指定 /p:BepInExDir=... 或设置环境变量 BEPINEX_DIR。当前路径：$(BepInExDir)" />
+  </Target>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Condition="'$(DeployToGame)' == 'true'"
+          Command="if not exist &quot;$(BepInExDir)\..\patchers&quot; mkdir &quot;$(BepInExDir)\..\patchers&quot;&#xD;&#xA;copy &quot;$(TargetPath)&quot; &quot;$(BepInExDir)\..\patchers\&quot; /Y" />
+  </Target>
+</Project>
+

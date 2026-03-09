@@ -1,4 +1,10 @@
 <Solution>
+  <Folder Name="/src/SABepInExManager.Core/">
+    <Project Path="src/SABepInExManager.Core/SABepInExManager.Core.csproj" />
+  </Folder>
+  <Folder Name="/src/SABepInExManager.Patcher/">
+    <Project Path="src/SABepInExManager.Patcher/SABepInExManager.Patcher.csproj" />
+  </Folder>
   <Folder Name="/src/SABepInExManager/">
     <Project Path="src/SABepInExManager/SABepInExManager.csproj" />
   </Folder>
