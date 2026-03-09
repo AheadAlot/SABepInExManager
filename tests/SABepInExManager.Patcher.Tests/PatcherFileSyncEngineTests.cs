@@ -37,55 +37,6 @@ public class PatcherFileSyncEngineTests
     }
 
     [Property(MaxTest = 40)]
-    public void SyncSingleMod_ShouldDeleteOldRemovedFileAndCleanupEmptyDirectories(
-        NonEmptyString oldFileSeed,
-        NonEmptyString newFileSeed,
-        NonEmptyString newContentSeed)
-    {
-        using var fx = new TempDirectoryFixture();
-        var gameRoot = fx.EnsureDirectory("game", "BepInEx");
-        var sourceRoot = fx.EnsureDirectory("mods", "m1");
-        var selfAssemblyPath = fx.WriteText("game/BepInEx/plugins/self.dll", "self");
-
-        var oldFileName = ToSafeFileName(oldFileSeed.Get) + ".dll";
-        var newFileName = ToSafeFileName(newFileSeed.Get) + ".dll";
-        var newContent = newContentSeed.Get;
-
-        var oldFile = fx.WriteText($"game/BepInEx/plugins/Old/{oldFileName}", "old");
-        oldFile.Should().NotBeNullOrWhiteSpace();
-
-        var sourceNew = fx.WriteText($"mods/m1/{newFileName}", newContent);
-        var entries = new List<ManagedFileEntry>
-        {
-            new()
-            {
-                ModId = "m1",
-                SourcePath = sourceNew,
-                TargetRelativePath = $"plugins/{newFileName}",
-            },
-        };
-
-        var oldState = new PatcherModState
-        {
-            Signature = "old-sig",
-            Files = new List<string> { $"plugins/Old/{oldFileName}" },
-        };
-
-        var newState = PatcherFileSyncEngine.SyncSingleMod(
-            gameRoot,
-            selfAssemblyPath,
-            "m1",
-            entries,
-            oldState,
-            DateTimeOffset.UtcNow);
-
-        File.Exists(Path.Combine(gameRoot, "plugins", "Old", oldFileName)).Should().BeFalse();
-        Directory.Exists(Path.Combine(gameRoot, "plugins", "Old")).Should().BeFalse();
-        File.ReadAllText(Path.Combine(gameRoot, "plugins", newFileName)).Should().Be(newContent);
-        newState.Files.Should().ContainSingle().Which.Should().Be($"plugins/{newFileName}");
-    }
-
-    [Property(MaxTest = 40)]
     public void SyncSingleMod_ShouldNotDeleteProtectedConfigurationManagerFiles(
         NonEmptyString protectedFileSeed,
         NonEmptyString contentSeed)
@@ -144,6 +95,36 @@ public class PatcherFileSyncEngineTests
             now: DateTimeOffset.UtcNow);
 
         File.Exists(Path.Combine(gameRoot, "core", coreFile)).Should().BeTrue();
+    }
+
+    [Property(MaxTest = 40)]
+    public void SyncSingleMod_ShouldCreateDirectoryForDirectoryEntry(NonEmptyString dirSeed)
+    {
+        using var fx = new TempDirectoryFixture();
+        var gameRoot = fx.EnsureDirectory("game", "BepInEx");
+        var selfAssemblyPath = fx.WriteText("game/BepInEx/patchers/self.dll", "self");
+
+        var dirName = ToSafeFileName(dirSeed.Get);
+        var entries = new List<ManagedFileEntry>
+        {
+            new()
+            {
+                ModId = "m1",
+                SourcePath = fx.PathOf("mods", "m1", dirName),
+                TargetRelativePath = $"plugins/{dirName}",
+                IsDirectory = true,
+            },
+        };
+
+        _ = PatcherFileSyncEngine.SyncSingleMod(
+            gameRoot,
+            selfAssemblyPath,
+            "m1",
+            entries,
+            oldModState: null,
+            now: DateTimeOffset.UtcNow);
+
+        Directory.Exists(Path.Combine(gameRoot, "plugins", dirName)).Should().BeTrue();
     }
 
     private static string ToSafeFileName(string seed)

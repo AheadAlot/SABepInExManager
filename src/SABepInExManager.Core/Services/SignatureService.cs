@@ -17,6 +17,13 @@ public class SignatureService
                      .OrderBy(x => x.TargetRelativePath, StringComparer.OrdinalIgnoreCase)
                      .ThenBy(x => x.SourcePath, StringComparer.OrdinalIgnoreCase))
         {
+            if (entry.IsDirectory)
+            {
+                builder.Append(entry.TargetRelativePath)
+                    .Append("|DIR;");
+                continue;
+            }
+
             if (!File.Exists(entry.SourcePath))
             {
                 continue;

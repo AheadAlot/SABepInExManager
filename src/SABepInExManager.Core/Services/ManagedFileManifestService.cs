@@ -41,6 +41,29 @@ public class ManagedFileManifestService
                 });
             }
 
+            foreach (var dirPath in Directory.EnumerateDirectories(modBepInExRoot, "*", SearchOption.AllDirectories))
+            {
+                if (Directory.EnumerateFileSystemEntries(dirPath).Any())
+                {
+                    continue;
+                }
+
+                var relPath = GetRelativePathCompat(modBepInExRoot, dirPath).Replace('\\', '/').Trim('/');
+                if (string.IsNullOrWhiteSpace(relPath))
+                {
+                    continue;
+                }
+
+                entries.Add(new ManagedFileEntry
+                {
+                    ModId = modId,
+                    SourcePath = dirPath,
+                    TargetRelativePath = $"plugins/{relPath}",
+                    SourceStructureType = structureType,
+                    IsDirectory = true,
+                });
+            }
+
             return entries;
         }
 
@@ -61,6 +84,29 @@ public class ManagedFileManifestService
                     SourcePath = sourcePath,
                     TargetRelativePath = $"{sub}/{relInsideSub}",
                     SourceStructureType = structureType,
+                });
+            }
+
+            foreach (var dirPath in Directory.EnumerateDirectories(sourceRoot, "*", SearchOption.AllDirectories))
+            {
+                if (Directory.EnumerateFileSystemEntries(dirPath).Any())
+                {
+                    continue;
+                }
+
+                var relInsideSub = GetRelativePathCompat(sourceRoot, dirPath).Replace('\\', '/').Trim('/');
+                if (string.IsNullOrWhiteSpace(relInsideSub))
+                {
+                    continue;
+                }
+
+                entries.Add(new ManagedFileEntry
+                {
+                    ModId = modId,
+                    SourcePath = dirPath,
+                    TargetRelativePath = $"{sub}/{relInsideSub}",
+                    SourceStructureType = structureType,
+                    IsDirectory = true,
                 });
             }
         }

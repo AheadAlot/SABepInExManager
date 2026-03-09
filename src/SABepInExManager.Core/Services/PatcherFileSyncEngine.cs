@@ -48,7 +48,6 @@ public static class PatcherFileSyncEngine
                 if (File.Exists(deletePath))
                 {
                     File.Delete(deletePath);
-                    CleanupEmptyDirectories(gameBepInExRoot, Path.GetDirectoryName(deletePath));
                     logInfo?.Invoke($"[Patcher] [{modId}] 删除旧文件: {normalized}");
                 }
             }
@@ -73,6 +72,12 @@ public static class PatcherFileSyncEngine
 
             try
             {
+                if (entry.IsDirectory)
+                {
+                    Directory.CreateDirectory(targetPath);
+                    continue;
+                }
+
                 var dir = Path.GetDirectoryName(targetPath);
                 if (!string.IsNullOrWhiteSpace(dir))
                 {
@@ -154,34 +159,6 @@ public static class PatcherFileSyncEngine
         catch
         {
             // ignore backup errors
-        }
-    }
-
-    private static void CleanupEmptyDirectories(string gameBepInExRoot, string? startDir)
-    {
-        if (string.IsNullOrWhiteSpace(startDir))
-        {
-            return;
-        }
-
-        var root = Path.GetFullPath(gameBepInExRoot).TrimEnd(Path.DirectorySeparatorChar);
-        var current = Path.GetFullPath(startDir);
-
-        while (current.StartsWith(root, StringComparison.OrdinalIgnoreCase)
-               && !string.Equals(current, root, StringComparison.OrdinalIgnoreCase))
-        {
-            if (!Directory.Exists(current))
-            {
-                break;
-            }
-
-            if (Directory.EnumerateFileSystemEntries(current).Any())
-            {
-                break;
-            }
-
-            Directory.Delete(current, recursive: false);
-            current = Path.GetDirectoryName(current) ?? root;
         }
     }
 
