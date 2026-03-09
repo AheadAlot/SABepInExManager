@@ -119,84 +119,18 @@ public class PatcherSyncService
         {
             var mod = enabledMods[i];
             var entries = newEntries[mod.ModId];
-            var targetSet = new HashSet<string>(entries.Select(x => NormalizeRelativePath(x.TargetRelativePath)), StringComparer.OrdinalIgnoreCase);
-
             patcherState.Mods.TryGetValue(mod.ModId, out var oldModState);
-            var oldFiles = oldModState?.Files ?? [];
-
-            foreach (var oldFile in oldFiles)
-            {
-                var normalized = NormalizeRelativePath(oldFile);
-                if (targetSet.Contains(normalized))
-                {
-                    continue;
-                }
-
-                if (!TryResolveManagedTargetPath(gameBepInExRoot, normalized, out var deletePath))
-                {
-                    continue;
-                }
-
-                if (IsProtectedPath(deletePath, selfAssemblyPath))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    if (File.Exists(deletePath))
-                    {
-                        File.Delete(deletePath);
-                        CleanupEmptyDirectories(gameBepInExRoot, Path.GetDirectoryName(deletePath));
-                        _logger.LogInfo($"[Patcher] [{mod.ModId}] 删除旧文件: {normalized}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning($"[Patcher] [{mod.ModId}] 删除失败: {normalized} | {ex.Message}");
-                }
-            }
-
-            foreach (var entry in entries)
-            {
-                var normalized = NormalizeRelativePath(entry.TargetRelativePath);
-                if (!TryResolveManagedTargetPath(gameBepInExRoot, normalized, out var targetPath))
-                {
-                    continue;
-                }
-
-                if (IsProtectedPath(targetPath, selfAssemblyPath))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    var dir = Path.GetDirectoryName(targetPath);
-                    if (!string.IsNullOrWhiteSpace(dir))
-                    {
-                        Directory.CreateDirectory(dir);
-                    }
-
-                    if (File.Exists(targetPath))
-                    {
-                        TryBackup(targetPath);
-                    }
-
-                    File.Copy(entry.SourcePath, targetPath, overwrite: true);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning($"[Patcher] [{mod.ModId}] 覆盖失败: {normalized} | {ex.Message}");
-                }
-            }
-
-            patcherState.Mods[mod.ModId] = new PatcherModState
-            {
-                Signature = newSignatures[mod.ModId],
-                Files = targetSet.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList(),
-                LastSyncedAt = now,
-            };
+            var newState = PatcherFileSyncEngine.SyncSingleMod(
+                gameBepInExRoot,
+                selfAssemblyPath,
+                mod.ModId,
+                entries,
+                oldModState,
+                now,
+                logInfo: message => _logger.LogInfo(message),
+                logWarning: message => _logger.LogWarning(message));
+            newState.Signature = newSignatures[mod.ModId];
+            patcherState.Mods[mod.ModId] = newState;
 
             _logger.LogInfo($"[Patcher] [{mod.ModId}] 已同步 {entries.Count} 个文件。");
         }
@@ -295,93 +229,5 @@ public class PatcherSyncService
         var json = JsonSerializer.Serialize(state, JsonOptions);
         File.WriteAllText(path, json);
     }
-
-    private static bool TryResolveManagedTargetPath(string gameBepInExRoot, string targetRelativePath, out string fullPath)
-    {
-        fullPath = string.Empty;
-        if (string.IsNullOrWhiteSpace(targetRelativePath))
-        {
-            return false;
-        }
-
-        var normalized = NormalizeRelativePath(targetRelativePath);
-        if (!IsWhitelisted(normalized))
-        {
-            return false;
-        }
-
-        var candidate = Path.GetFullPath(Path.Combine(gameBepInExRoot, normalized.Replace('/', Path.DirectorySeparatorChar)));
-        var root = Path.GetFullPath(gameBepInExRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        if (!candidate.StartsWith(root, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        fullPath = candidate;
-        return true;
-    }
-
-    private static bool IsWhitelisted(string targetRelativePath)
-    {
-        var normalized = NormalizeRelativePath(targetRelativePath);
-        return PathConstants.ManagedBepInExSubDirs.Any(sub =>
-            normalized.Equals(sub, StringComparison.OrdinalIgnoreCase)
-            || normalized.StartsWith(sub + "/", StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static bool IsProtectedPath(string fullPath, string selfAssemblyPath)
-    {
-        if (string.Equals(Path.GetFullPath(fullPath), selfAssemblyPath, StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        var normalized = fullPath.Replace('\\', '/');
-        var preservePrefix = "/BepInEx/plugins/" + PreservedPluginDirectory + "/";
-        return normalized.IndexOf(preservePrefix, StringComparison.OrdinalIgnoreCase) >= 0;
-    }
-
-    private static void TryBackup(string path)
-    {
-        try
-        {
-            File.Copy(path, path + BackupSuffix, overwrite: true);
-        }
-        catch
-        {
-            // ignore backup errors
-        }
-    }
-
-    private static void CleanupEmptyDirectories(string gameBepInExRoot, string? startDir)
-    {
-        if (string.IsNullOrWhiteSpace(startDir))
-        {
-            return;
-        }
-
-        var root = Path.GetFullPath(gameBepInExRoot).TrimEnd(Path.DirectorySeparatorChar);
-        var current = Path.GetFullPath(startDir);
-
-        while (current.StartsWith(root, StringComparison.OrdinalIgnoreCase)
-               && !string.Equals(current, root, StringComparison.OrdinalIgnoreCase))
-        {
-            if (!Directory.Exists(current))
-            {
-                break;
-            }
-
-            if (Directory.EnumerateFileSystemEntries(current).Any())
-            {
-                break;
-            }
-
-            Directory.Delete(current, recursive: false);
-            current = Path.GetDirectoryName(current) ?? root;
-        }
-    }
-
-    private static string NormalizeRelativePath(string path)
-        => path.Replace('\\', '/').TrimStart('/');
 }
 

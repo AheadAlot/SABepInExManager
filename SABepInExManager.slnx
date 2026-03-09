@@ -8,5 +8,14 @@
   <Folder Name="/src/SABepInExManager/">
     <Project Path="src/SABepInExManager/SABepInExManager.csproj" />
   </Folder>
+  <Folder Name="/tests/SABepInExManager.Core.Tests/">
+    <Project Path="tests/SABepInExManager.Core.Tests/SABepInExManager.Core.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/SABepInExManager.Manager.Tests/">
+    <Project Path="tests/SABepInExManager.Manager.Tests/SABepInExManager.Manager.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/SABepInExManager.Patcher.Tests/">
+    <Project Path="tests/SABepInExManager.Patcher.Tests/SABepInExManager.Patcher.Tests.csproj" />
+  </Folder>
 </Solution>
 
