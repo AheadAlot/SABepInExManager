@@ -9,7 +9,6 @@ namespace SABepInExManager.Core.Services;
 
 public static class PatcherFileSyncEngine
 {
-    private const string BackupSuffix = ".bak";
     private const string PreservedPluginDirectory = "ConfigurationManager";
 
     public static PatcherModState SyncSingleMod(
@@ -84,11 +83,6 @@ public static class PatcherFileSyncEngine
                     Directory.CreateDirectory(dir);
                 }
 
-                if (File.Exists(targetPath))
-                {
-                    TryBackup(targetPath);
-                }
-
                 File.Copy(entry.SourcePath, targetPath, overwrite: true);
             }
             catch (Exception ex)
@@ -148,18 +142,6 @@ public static class PatcherFileSyncEngine
         var normalized = fullPath.Replace('\\', '/');
         var preservePrefix = "/BepInEx/plugins/" + PreservedPluginDirectory + "/";
         return normalized.IndexOf(preservePrefix, StringComparison.OrdinalIgnoreCase) >= 0;
-    }
-
-    private static void TryBackup(string path)
-    {
-        try
-        {
-            File.Copy(path, path + BackupSuffix, overwrite: true);
-        }
-        catch
-        {
-            // ignore backup errors
-        }
     }
 
     private static string NormalizeRelativePath(string path)
