@@ -10,8 +10,10 @@ using SABepInExManager.Models;
 
 namespace SABepInExManager.Services;
 
-public class BepInExService
-{
+    public class BepInExService
+    {
+    private const string PatcherFileName = "SABepInExManager.Patcher.dll";
+
     private static readonly HttpClient HttpClient = new()
     {
         Timeout = TimeSpan.FromSeconds(30),
@@ -77,28 +79,32 @@ public class BepInExService
             catch (Exception ex) when (IsNetworkRelatedException(ex))
             {
                 Report($"GitHub 下载失败：{FormatNetworkError(ex)}");
-                Report("检测到网络异常，开始使用 third_party/BepInEx 本地备选包...");
+                Report("检测到网络异常，开始使用 third_party/BepInEx 本地备选目录...");
 
-                var backupZipPath = FindBackupBepInExZipPath();
-                if (string.IsNullOrWhiteSpace(backupZipPath))
+                var backupPayloadRoot = FindBackupBepInExPayloadRoot();
+                if (string.IsNullOrWhiteSpace(backupPayloadRoot))
                 {
                     return new InstallResult
                     {
                         Success = false,
-                        Message = $"网络异常且未找到本地备选包（third_party/BepInEx）。原始错误：{FormatNetworkError(ex)}",
+                        Message = $"网络异常且未找到本地备选目录（third_party/BepInEx）。原始错误：{FormatNetworkError(ex)}",
                     };
                 }
 
-                File.Copy(backupZipPath, zipPath, overwrite: true);
+                Report($"已切换到本地备选目录：{backupPayloadRoot}");
+                Report("正在写入游戏目录...");
+                CopyExtractedToGameRoot(backupPayloadRoot, gameRoot);
                 installedFromBackup = true;
-                Report($"已切换到本地备选包：{Path.GetFileName(backupZipPath)}");
             }
 
-            Report("正在解压 BepInEx...");
-            ZipFile.ExtractToDirectory(zipPath, extractPath, overwriteFiles: true);
+            if (!installedFromBackup)
+            {
+                Report("正在解压 BepInEx...");
+                ZipFile.ExtractToDirectory(zipPath, extractPath, overwriteFiles: true);
 
-            Report("正在写入游戏目录...");
-            CopyExtractedToGameRoot(extractPath, gameRoot);
+                Report("正在写入游戏目录...");
+                CopyExtractedToGameRoot(extractPath, gameRoot);
+            }
 
             Report("正在安装 ConfigurationManager...");
             var configManagerResult = await InstallConfigurationManagerAsync(gameRoot, tempRoot, Report);
@@ -110,21 +116,28 @@ public class BepInExService
             Report("正在应用默认配置...");
             var configCopied = TryCopyBundledBepInExConfig(gameRoot);
 
+            Report("正在部署 patcher...");
+            var patcherInstallResult = TryInstallBundledPatcher(gameRoot, out var patcherMessage);
+            Report(patcherMessage);
+
             Report("正在校验安装结果...");
             if (!IsInstalled(gameRoot))
             {
                 return new InstallResult { Success = false, Message = "安装后校验失败，请检查目录权限或手动安装。" };
             }
 
-            var source = installedFromBackup ? "本地备选包" : "GitHub";
+            var source = installedFromBackup ? "本地备选目录" : "GitHub";
             var configManagerStatus = configManagerResult.Success
                 ? "已安装 ConfigurationManager"
                 : $"未安装 ConfigurationManager（{configManagerResult.Message}）";
             var configStatus = configCopied
                 ? "已写入默认 BepInEx.cfg"
                 : "未找到内置 BepInEx.cfg，已跳过配置覆盖";
+            var patcherStatus = patcherInstallResult
+                ? "已部署 patcher"
+                : $"未部署 patcher（{patcherMessage}）";
 
-            var message = $"BepInEx 安装完成（来源：{source}），{configManagerStatus}，{configStatus}。";
+            var message = $"BepInEx 安装完成（来源：{source}），{configManagerStatus}，{configStatus}，{patcherStatus}。";
 
             return new InstallResult { Success = true, Message = message };
         }
@@ -295,45 +308,66 @@ public class BepInExService
             catch (Exception ex) when (IsNetworkRelatedException(ex))
             {
                 progressCallback?.Invoke($"ConfigurationManager GitHub 下载失败：{FormatNetworkError(ex)}");
-                progressCallback?.Invoke("检测到网络异常，开始使用 third_party/BepInEx.ConfigurationManager 本地备选包...");
+                progressCallback?.Invoke("检测到网络异常，开始使用 third_party/BepInEx.ConfigurationManager 本地备选目录...");
 
-                var backupZipPath = FindBackupConfigurationManagerZipPath();
-                if (string.IsNullOrWhiteSpace(backupZipPath))
+                var backupSourceRoot = FindBackupConfigurationManagerSourceRoot();
+                if (string.IsNullOrWhiteSpace(backupSourceRoot))
                 {
                     return new InstallResult
                     {
                         Success = false,
-                        Message = $"网络异常且未找到 ConfigurationManager 本地备选包（third_party/BepInEx.ConfigurationManager）。原始错误：{FormatNetworkError(ex)}",
+                        Message = $"网络异常且未找到 ConfigurationManager 本地备选目录（third_party/BepInEx.ConfigurationManager）。原始错误：{FormatNetworkError(ex)}",
                     };
                 }
 
-                File.Copy(backupZipPath, zipPath, overwrite: true);
+                var dllPathsFromBackup = Directory
+                    .GetFiles(backupSourceRoot, "*ConfigurationManager*.dll", SearchOption.AllDirectories)
+                    .ToList();
+
+                if (dllPathsFromBackup.Count == 0)
+                {
+                    return new InstallResult { Success = false, Message = "ConfigurationManager 本地备选目录中未找到 DLL。" };
+                }
+
+                var pluginsDirFromBackup = Path.Combine(gameRoot, "BepInEx", "plugins", "ConfigurationManager");
+                Directory.CreateDirectory(pluginsDirFromBackup);
+
+                foreach (var dllPath in dllPathsFromBackup)
+                {
+                    var fileName = Path.GetFileName(dllPath);
+                    var destination = Path.Combine(pluginsDirFromBackup, fileName);
+                    File.Copy(dllPath, destination, overwrite: true);
+                }
+
                 installedFromBackup = true;
-                progressCallback?.Invoke($"ConfigurationManager 已切换到本地备选包：{Path.GetFileName(backupZipPath)}");
+                progressCallback?.Invoke($"ConfigurationManager 已切换到本地备选目录：{backupSourceRoot}");
             }
 
-            ZipFile.ExtractToDirectory(zipPath, extractPath, overwriteFiles: true);
-
-            var dllPaths = Directory
-                .GetFiles(extractPath, "*ConfigurationManager*.dll", SearchOption.AllDirectories)
-                .ToList();
-
-            if (dllPaths.Count == 0)
+            if (!installedFromBackup)
             {
-                return new InstallResult { Success = false, Message = "ConfigurationManager 安装包中未找到 DLL。" };
+                ZipFile.ExtractToDirectory(zipPath, extractPath, overwriteFiles: true);
+
+                var dllPaths = Directory
+                    .GetFiles(extractPath, "*ConfigurationManager*.dll", SearchOption.AllDirectories)
+                    .ToList();
+
+                if (dllPaths.Count == 0)
+                {
+                    return new InstallResult { Success = false, Message = "ConfigurationManager 安装包中未找到 DLL。" };
+                }
+
+                var pluginsDir = Path.Combine(gameRoot, "BepInEx", "plugins", "ConfigurationManager");
+                Directory.CreateDirectory(pluginsDir);
+
+                foreach (var dllPath in dllPaths)
+                {
+                    var fileName = Path.GetFileName(dllPath);
+                    var destination = Path.Combine(pluginsDir, fileName);
+                    File.Copy(dllPath, destination, overwrite: true);
+                }
             }
 
-            var pluginsDir = Path.Combine(gameRoot, "BepInEx", "plugins", "ConfigurationManager");
-            Directory.CreateDirectory(pluginsDir);
-
-            foreach (var dllPath in dllPaths)
-            {
-                var fileName = Path.GetFileName(dllPath);
-                var destination = Path.Combine(pluginsDir, fileName);
-                File.Copy(dllPath, destination, overwrite: true);
-            }
-
-            var source = installedFromBackup ? "本地备选包" : "GitHub";
+            var source = installedFromBackup ? "本地备选目录" : "GitHub";
             return new InstallResult { Success = true, Message = $"ConfigurationManager 安装完成（来源：{source}）。" };
         }
         catch (Exception ex)
@@ -373,7 +407,7 @@ public class BepInExService
         return ex.Message;
     }
 
-    private static string? FindBackupBepInExZipPath()
+    private static string? FindBackupBepInExPayloadRoot()
     {
         var folderCandidates = new[]
         {
@@ -389,22 +423,22 @@ public class BepInExService
                 continue;
             }
 
-            var bestMatch = Directory
-                .GetFiles(folder, "*.zip", SearchOption.TopDirectoryOnly)
-                .OrderByDescending(path => Path.GetFileName(path).Contains("x64", StringComparison.OrdinalIgnoreCase))
-                .ThenBy(path => path, StringComparer.OrdinalIgnoreCase)
-                .FirstOrDefault();
+            var payloadRoot = ResolveInstallPayloadRoot(folder);
+            var bepinexDir = Path.Combine(payloadRoot, "BepInEx");
+            var doorstopFile = Path.Combine(payloadRoot, "doorstop_config.ini");
+            var preloaderDll = Path.Combine(payloadRoot, "BepInEx", "core", "BepInEx.Preloader.dll");
 
-            if (!string.IsNullOrWhiteSpace(bestMatch))
+            if (Directory.Exists(bepinexDir)
+                && (File.Exists(doorstopFile) || File.Exists(preloaderDll)))
             {
-                return bestMatch;
+                return payloadRoot;
             }
         }
 
         return null;
     }
 
-    private static string? FindBackupConfigurationManagerZipPath()
+    private static string? FindBackupConfigurationManagerSourceRoot()
     {
         var folderCandidates = new[]
         {
@@ -420,15 +454,13 @@ public class BepInExService
                 continue;
             }
 
-            var bestMatch = Directory
-                .GetFiles(folder, "*.zip", SearchOption.TopDirectoryOnly)
-                .OrderByDescending(path => Path.GetFileName(path).Contains("bepinex5", StringComparison.OrdinalIgnoreCase))
-                .ThenBy(path => path, StringComparer.OrdinalIgnoreCase)
-                .FirstOrDefault();
+            var hasDll = Directory
+                .GetFiles(folder, "*ConfigurationManager*.dll", SearchOption.AllDirectories)
+                .Any();
 
-            if (!string.IsNullOrWhiteSpace(bestMatch))
+            if (hasDll)
             {
-                return bestMatch;
+                return folder;
             }
         }
 
@@ -453,6 +485,32 @@ public class BepInExService
         Directory.CreateDirectory(targetDir);
         var target = Path.Combine(targetDir, "BepInEx.cfg");
         File.Copy(source, target, overwrite: true);
+        return true;
+    }
+
+    private static bool TryInstallBundledPatcher(string gameRoot, out string message)
+    {
+        var sourceCandidates = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "patcher", PatcherFileName),
+            Path.Combine(Directory.GetCurrentDirectory(), "patcher", PatcherFileName),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "patcher", PatcherFileName)),
+        };
+
+        var source = sourceCandidates.FirstOrDefault(File.Exists);
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            message = "未找到随程序分发的 patcher DLL，已跳过";
+            return false;
+        }
+
+        var targetDir = Path.Combine(gameRoot, "BepInEx", "patchers");
+        Directory.CreateDirectory(targetDir);
+
+        var target = Path.Combine(targetDir, PatcherFileName);
+        File.Copy(source, target, overwrite: true);
+
+        message = $"patcher 已部署到 {targetDir}";
         return true;
     }
 
