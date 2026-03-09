@@ -184,28 +184,6 @@ public partial class HomePageView : UserControl
         }
     }
 
-    private async void OnApplyClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-    {
-        if (DataContext is not HomePageViewModel vm)
-        {
-            return;
-        }
-
-        var confirmed = await ShowConfirmDialogAsync(
-            new ConfirmDialogOptions
-            {
-                Title = "确认加载已选模组",
-                Message = "将根据当前勾选与排序写入文件到游戏根目录。是否继续加载？",
-                ConfirmText = "确认加载",
-                IsDangerous = false,
-            });
-
-        if (confirmed)
-        {
-            await vm.ApplyCommand.ExecuteAsync(null);
-        }
-    }
-
     private async void OnInstallBepInExClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (DataContext is not HomePageViewModel vm)

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -25,21 +27,22 @@ public class HomePageViewModel : ViewModelBase
     private string _workshopContentPath = string.Empty;
     private WorkshopModInfo? _selectedMod;
     private bool _isBepInExInstalled;
+    private bool _isRefreshingMods;
 
     public HomePageViewModel()
     {
         RefreshModsCommand = new AsyncRelayCommand(RefreshModsByUserAsync);
-        CheckUpdatesCommand = new AsyncRelayCommand(CheckUpdatesAsync);
         DetectGameRootPathCommand = new AsyncRelayCommand(DetectGameRootPathAsync);
         DetectWorkshopPathCommand = new RelayCommand(DetectWorkshopPath);
         CreateBaselineCommand = new AsyncRelayCommand(CreateBaselineAsync);
         RestoreBaselineCommand = new AsyncRelayCommand(RestoreBaselineAsync);
         PreviewConflictsCommand = new RelayCommand(PreviewConflicts);
-        ApplyCommand = new AsyncRelayCommand(ApplyAsync);
         MoveSelectedUpCommand = new RelayCommand(MoveSelectedUp);
         MoveSelectedDownCommand = new RelayCommand(MoveSelectedDown);
         InstallBepInExCommand = new AsyncRelayCommand(InstallBepInExAsync);
         OpenSelectedModFolderCommand = new RelayCommand(OpenSelectedModFolder);
+
+        Mods.CollectionChanged += OnModsCollectionChanged;
     }
 
     public ObservableCollection<WorkshopModInfo> Mods { get; } = new();
@@ -86,13 +89,11 @@ public class HomePageViewModel : ViewModelBase
     public string InstallBepInExButtonText => IsBepInExInstalled ? "重装" : "安装";
 
     public IAsyncRelayCommand RefreshModsCommand { get; }
-    public IAsyncRelayCommand CheckUpdatesCommand { get; }
     public IAsyncRelayCommand DetectGameRootPathCommand { get; }
     public IRelayCommand DetectWorkshopPathCommand { get; }
     public IAsyncRelayCommand CreateBaselineCommand { get; }
     public IAsyncRelayCommand RestoreBaselineCommand { get; }
     public IRelayCommand PreviewConflictsCommand { get; }
-    public IAsyncRelayCommand ApplyCommand { get; }
     public IRelayCommand MoveSelectedUpCommand { get; }
     public IRelayCommand MoveSelectedDownCommand { get; }
     public IAsyncRelayCommand InstallBepInExCommand { get; }
@@ -169,25 +170,36 @@ public class HomePageViewModel : ViewModelBase
 
     private async Task RefreshModsAsync()
     {
+        _isRefreshingMods = true;
+        UnsubscribeAllModPropertyChanged();
         Mods.Clear();
 
-        if (!Directory.Exists(WorkshopContentPath))
+        try
         {
-            AppendLog("工坊目录不存在，跳过扫描。", reset: true);
-            return;
+            if (!Directory.Exists(WorkshopContentPath))
+            {
+                AppendLog("工坊目录不存在，跳过扫描。", reset: true);
+                return;
+            }
+
+            var state = _modApplyService.LoadState(GameRootPath);
+            var enabledOrder = state?.EnabledModIds ?? new List<string>();
+            var mods = _workshopService.ScanMods(WorkshopContentPath, enabledOrder);
+
+            foreach (var mod in mods)
+            {
+                Mods.Add(mod);
+                mod.PropertyChanged += OnModPropertyChanged;
+            }
         }
-
-        var state = _modApplyService.LoadState(GameRootPath);
-        var enabledOrder = state?.EnabledModIds ?? new List<string>();
-        var mods = _workshopService.ScanMods(WorkshopContentPath, enabledOrder);
-
-        foreach (var mod in mods)
+        finally
         {
-            Mods.Add(mod);
+            _isRefreshingMods = false;
         }
 
         SelectedMod = Mods.FirstOrDefault();
         AppendLog($"扫描完成：找到 {Mods.Count} 个可管理 mod。", reset: true);
+        PersistEnabledState();
         await SaveConfigAsync();
     }
 
@@ -328,93 +340,6 @@ public class HomePageViewModel : ViewModelBase
         }
     }
 
-    private async Task ApplyAsync()
-    {
-        try
-        {
-            ValidateGameRootForActionsOrThrow();
-            if (!EnsureBepInExInstalledForAction("加载已选模组"))
-            {
-                return;
-            }
-
-            var enabledMods = GetEnabledModsInOrder();
-            var signatures = BuildEnabledModSignatures(enabledMods);
-
-            _modApplyService.Apply(GameRootPath, enabledMods, signatures);
-
-            AppendLog($"加载完成：已加载 {enabledMods.Count} 个模组。", reset: true);
-            foreach (var mod in enabledMods)
-            {
-                AppendLog($"- {mod.DisplayName}");
-            }
-        }
-        catch (Exception ex)
-        {
-            AppendLog($"Apply 失败：{ex.Message}", reset: true);
-        }
-
-        await SaveConfigAsync();
-    }
-
-    private async Task CheckUpdatesAsync()
-    {
-        try
-        {
-            ValidateGameRootForActionsOrThrow();
-            if (!EnsureBepInExInstalledForAction("检查更新"))
-            {
-                return;
-            }
-
-            var enabledMods = GetEnabledModsInOrder();
-            if (enabledMods.Count == 0)
-            {
-                AppendLog("没有已勾选的 mod，无需检查更新。", reset: true);
-                return;
-            }
-
-            var state = _modApplyService.LoadState(GameRootPath);
-            var appliedSignatures = state?.AppliedModSignatures
-                                  ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            var currentSignatures = BuildEnabledModSignatures(enabledMods);
-
-            var changedMods = enabledMods
-                .Where(mod =>
-                {
-                    var signatureChanged = !appliedSignatures.TryGetValue(mod.ModId, out var oldSignature)
-                                           || !string.Equals(oldSignature, currentSignatures[mod.ModId], StringComparison.Ordinal);
-                    if (signatureChanged)
-                    {
-                        return true;
-                    }
-
-                    return _workshopService.HasAssemblyVersionUpdate(GameRootPath, mod);
-                })
-                .ToList();
-
-            if (changedMods.Count == 0)
-            {
-                AppendLog($"检查完成：{enabledMods.Count} 个已勾选 mod 均无变化。", reset: true);
-                return;
-            }
-
-            _modApplyService.Apply(GameRootPath, enabledMods, currentSignatures);
-
-            AppendLog($"检查完成：发现 {changedMods.Count} 个 mod 有更新，已按当前优先级重新应用全部已勾选 mod。", reset: true);
-            foreach (var mod in changedMods)
-            {
-                AppendLog($"- {mod.DisplayName}");
-            }
-        }
-        catch (Exception ex)
-        {
-            AppendLog($"检查更新失败：{ex.Message}", reset: true);
-        }
-
-        await SaveConfigAsync();
-    }
-
     private void MoveSelectedUp()
     {
         if (SelectedMod is null)
@@ -445,6 +370,69 @@ public class HomePageViewModel : ViewModelBase
         }
 
         Mods.Move(index, index + 1);
+    }
+
+    private void OnModsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null)
+        {
+            foreach (var item in e.OldItems.OfType<WorkshopModInfo>())
+            {
+                item.PropertyChanged -= OnModPropertyChanged;
+            }
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (var item in e.NewItems.OfType<WorkshopModInfo>())
+            {
+                item.PropertyChanged -= OnModPropertyChanged;
+                item.PropertyChanged += OnModPropertyChanged;
+            }
+        }
+
+        if (_isRefreshingMods)
+        {
+            return;
+        }
+
+        PersistEnabledState();
+    }
+
+    private void OnModPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_isRefreshingMods)
+        {
+            return;
+        }
+
+        if (!string.Equals(e.PropertyName, nameof(WorkshopModInfo.IsEnabled), StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        PersistEnabledState();
+    }
+
+    private void UnsubscribeAllModPropertyChanged()
+    {
+        foreach (var mod in Mods)
+        {
+            mod.PropertyChanged -= OnModPropertyChanged;
+        }
+    }
+
+    private void PersistEnabledState()
+    {
+        if (string.IsNullOrWhiteSpace(GameRootPath) || !Directory.Exists(GameRootPath))
+        {
+            return;
+        }
+
+        var existingState = _modApplyService.LoadState(GameRootPath) ?? new AppState();
+        existingState.EnabledModIds = GetEnabledModsInOrder().Select(m => m.ModId).ToList();
+        existingState.WorkshopContentPath = WorkshopContentPath;
+        _modApplyService.SaveState(GameRootPath, existingState);
     }
 
     private async Task InstallBepInExAsync()
@@ -561,17 +549,6 @@ public class HomePageViewModel : ViewModelBase
     private List<WorkshopModInfo> GetEnabledModsInOrder()
     {
         return Mods.Where(m => m.IsEnabled).ToList();
-    }
-
-    private Dictionary<string, string> BuildEnabledModSignatures(IReadOnlyList<WorkshopModInfo> mods)
-    {
-        var signatures = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var mod in mods)
-        {
-            signatures[mod.ModId] = _workshopService.BuildManagedSignature(mod.BepInExRootPath, mod.StructureType);
-        }
-
-        return signatures;
     }
 
     private void AppendLog(string message, bool reset = false)

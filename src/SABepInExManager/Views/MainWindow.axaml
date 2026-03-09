@@ -212,14 +212,6 @@
                                 Content="刷新列表"
                                 IsEnabled="{Binding IsBepInExInstalled}"
                                 Command="{Binding RefreshModsCommand}"/>
-                        <Button Classes="action-button"
-                                Content="一键更新"
-                                IsEnabled="{Binding IsBepInExInstalled}"
-                                Command="{Binding CheckUpdatesCommand}"/>
-                        <Button Classes="action-button"
-                                Content="加载已选模组"
-                                IsEnabled="{Binding IsBepInExInstalled}"
-                                Command="{Binding ApplyCommand}"/>
                     </StackPanel>
                 </Grid>
             </Border>
