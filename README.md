@@ -30,7 +30,7 @@
 
 ### 环境要求
 
-- .NET SDK：项目目标框架为 `net10.0`（见 [`SABepInExManager.csproj`](src/SABepInExManager.csproj:4)）。
+- .NET SDK：项目目标框架为 `net10.0`（见 [`SABepInExManager.csproj`](src/SABepInExManager/SABepInExManager.csproj:4)）。
 
 ### 构建Debug
 
@@ -42,24 +42,24 @@ dotnet build ./SABepInExManager.slnx -c Debug
 
 ### 构建Release
 
-以下命令会将产物输出到根目录：`./dist/<rid>/`。
+以下命令会将产物输出到根目录：`./dist/SABepInExManager/<rid>/`。
 
 Windows x64：
 
 ```bash
-dotnet publish ./src/SABepInExManager.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false
+dotnet publish ./src/SABepInExManager/SABepInExManager.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false
 ```
 
 macOS Apple Silicon：
 
 ```bash
-dotnet publish ./src/SABepInExManager.csproj -c Release -r osx-arm64 --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false
+dotnet publish ./src/SABepInExManager/SABepInExManager.csproj -c Release -r osx-arm64 --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false
 ```
 
 Linux x64：
 
 ```bash
-dotnet publish ./src/SABepInExManager.csproj -c Release -r linux-x64 --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false
+dotnet publish ./src/SABepInExManager/SABepInExManager.csproj -c Release -r linux-x64 --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false
 ```
 
 ## 使用的开源软件信息与声明

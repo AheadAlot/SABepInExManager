@@ -12,19 +12,19 @@
     <DebugSymbols>false</DebugSymbols>
     <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-    <PublishDir>$(MSBuildThisFileDirectory)..\dist\$(RuntimeIdentifier)\</PublishDir>
+    <PublishDir>$(MSBuildThisFileDirectory)..\..\dist\$(MSBuildProjectName)\$(RuntimeIdentifier)\</PublishDir>
   </PropertyGroup>
 
   <ItemGroup>
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />
-    <None Include="..\LICENSE" Link="LICENSE">
+    <None Include="..\..\LICENSE" Link="LICENSE">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="..\configs\BepInEx.cfg" Link="configs\BepInEx.cfg">
+    <None Include="..\..\configs\BepInEx.cfg" Link="configs\BepInEx.cfg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="..\third_party\**\*">
+    <None Include="..\..\third_party\**\*">
       <Link>third_party\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

@@ -1,6 +1,6 @@
 <Solution>
-  <Folder Name="/src/">
-    <Project Path="src/SABepInExManager.csproj" />
+  <Folder Name="/src/SABepInExManager/">
+    <Project Path="src/SABepInExManager/SABepInExManager.csproj" />
   </Folder>
 </Solution>
 

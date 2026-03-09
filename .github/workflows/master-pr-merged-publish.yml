@@ -27,13 +27,13 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore ./src/SABepInExManager.csproj
+        run: dotnet restore ./src/SABepInExManager/SABepInExManager.csproj
 
       - name: Publish
-        run: dotnet publish ./src/SABepInExManager.csproj -c Release -r ${{ matrix.runtime }} --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false --output ./publish/${{ matrix.runtime }}
+        run: dotnet publish ./src/SABepInExManager/SABepInExManager.csproj -c Release -r ${{ matrix.runtime }} --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false --output ./publish/${{ matrix.runtime }}
 
       - name: Zip published folder
         run: |
