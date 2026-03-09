@@ -10,9 +10,10 @@ using SABepInExManager.Models;
 
 namespace SABepInExManager.Services;
 
-    public class BepInExService
-    {
+public class BepInExService
+{
     private const string PatcherFileName = "SABepInExManager.Patcher.dll";
+    private const string PatcherSubdirectoryName = "SABepInExManager_AutoUpdater";
 
     private static readonly HttpClient HttpClient = new()
     {
@@ -490,27 +491,27 @@ namespace SABepInExManager.Services;
 
     private static bool TryInstallBundledPatcher(string gameRoot, out string message)
     {
-        var sourceCandidates = new[]
+        var sourceDirCandidates = new[]
         {
-            Path.Combine(AppContext.BaseDirectory, "patcher", PatcherFileName),
-            Path.Combine(Directory.GetCurrentDirectory(), "patcher", PatcherFileName),
-            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "patcher", PatcherFileName)),
+            Path.Combine(AppContext.BaseDirectory, "patcher", PatcherSubdirectoryName),
+            Path.Combine(Directory.GetCurrentDirectory(), "patcher", PatcherSubdirectoryName),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "patcher", PatcherSubdirectoryName)),
         };
 
-        var source = sourceCandidates.FirstOrDefault(File.Exists);
-        if (string.IsNullOrWhiteSpace(source))
+        var sourceDir = sourceDirCandidates
+            .FirstOrDefault(dir => Directory.Exists(dir) && File.Exists(Path.Combine(dir, PatcherFileName)));
+        if (string.IsNullOrWhiteSpace(sourceDir))
         {
             message = "未找到随程序分发的 patcher DLL，已跳过";
             return false;
         }
 
-        var targetDir = Path.Combine(gameRoot, "BepInEx", "patchers");
+        var targetDir = Path.Combine(gameRoot, "BepInEx", "patchers", PatcherSubdirectoryName);
         Directory.CreateDirectory(targetDir);
 
-        var target = Path.Combine(targetDir, PatcherFileName);
-        File.Copy(source, target, overwrite: true);
+        CopyDirectory(sourceDir, targetDir, overwrite: true);
 
-        message = $"patcher 已部署到 {targetDir}";
+        message = $"patcher 已部署到 {targetDir}（包含全部依赖）";
         return true;
     }
 

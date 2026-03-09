@@ -24,26 +24,29 @@
     <None Include="..\..\configs\BepInEx.cfg" Link="configs\BepInEx.cfg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="..\..\patcher\**\*">
-      <Link>patcher\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    <None Include="..\..\patcher\SABepInExManager_AutoUpdater\**\*">
+      <Link>patcher\SABepInExManager_AutoUpdater\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
     <None Include="..\..\third_party\**\*">
       <Link>third_party\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </None>
   </ItemGroup>
 
   <Target Name="CopyBundledPatcherToPublish" AfterTargets="Publish">
     <ItemGroup>
-      <BundledPatcherFiles Include="$(MSBuildThisFileDirectory)..\..\patcher\**\*" />
+      <BundledPatcherFiles Include="$(MSBuildThisFileDirectory)..\..\patcher\SABepInExManager_AutoUpdater\**\*" />
     </ItemGroup>
 
-    <MakeDir Directories="$(PublishDir)patcher" Condition="'@(BundledPatcherFiles)' != ''" />
+    <RemoveDir Directories="$(PublishDir)patcher" Condition="'@(BundledPatcherFiles)' != '' and Exists('$(PublishDir)patcher')" />
+    <MakeDir Directories="$(PublishDir)patcher\SABepInExManager_AutoUpdater" Condition="'@(BundledPatcherFiles)' != ''" />
 
     <Copy SourceFiles="@(BundledPatcherFiles)"
-          DestinationFiles="@(BundledPatcherFiles->'$(PublishDir)patcher\%(RecursiveDir)%(Filename)%(Extension)')"
+          DestinationFiles="@(BundledPatcherFiles->'$(PublishDir)patcher\SABepInExManager_AutoUpdater\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true"
           Condition="'@(BundledPatcherFiles)' != ''" />
   </Target>
