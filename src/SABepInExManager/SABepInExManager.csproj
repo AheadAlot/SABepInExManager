@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
@@ -24,8 +24,8 @@
     <None Include="..\..\configs\BepInEx.cfg" Link="configs\BepInEx.cfg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="..\..\patcher\SABepInExManager_AutoUpdater\**\*">
-      <Link>patcher\SABepInExManager_AutoUpdater\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    <None Include="..\..\patchers\SABepInExManager_AutoUpdater\**\*">
+      <Link>patchers\SABepInExManager_AutoUpdater\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
@@ -37,18 +37,18 @@
     </None>
   </ItemGroup>
 
-  <Target Name="CopyBundledPatcherToPublish" AfterTargets="Publish">
+  <Target Name="CopyBundledAutoUpdaterToPublish" AfterTargets="Publish">
     <ItemGroup>
-      <BundledPatcherFiles Include="$(MSBuildThisFileDirectory)..\..\patcher\SABepInExManager_AutoUpdater\**\*" />
+      <BundledAutoUpdaterFiles Include="$(MSBuildThisFileDirectory)..\..\patchers\SABepInExManager_AutoUpdater\**\*" />
     </ItemGroup>
 
-    <RemoveDir Directories="$(PublishDir)patcher" Condition="'@(BundledPatcherFiles)' != '' and Exists('$(PublishDir)patcher')" />
-    <MakeDir Directories="$(PublishDir)patcher\SABepInExManager_AutoUpdater" Condition="'@(BundledPatcherFiles)' != ''" />
+    <RemoveDir Directories="$(PublishDir)patchers" Condition="'@(BundledAutoUpdaterFiles)' != '' and Exists('$(PublishDir)patchers')" />
+    <MakeDir Directories="$(PublishDir)patchers\SABepInExManager_AutoUpdater" Condition="'@(BundledAutoUpdaterFiles)' != ''" />
 
-    <Copy SourceFiles="@(BundledPatcherFiles)"
-          DestinationFiles="@(BundledPatcherFiles->'$(PublishDir)patcher\SABepInExManager_AutoUpdater\%(RecursiveDir)%(Filename)%(Extension)')"
+    <Copy SourceFiles="@(BundledAutoUpdaterFiles)"
+          DestinationFiles="@(BundledAutoUpdaterFiles->'$(PublishDir)patchers\SABepInExManager_AutoUpdater\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true"
-          Condition="'@(BundledPatcherFiles)' != ''" />
+          Condition="'@(BundledAutoUpdaterFiles)' != ''" />
   </Target>
 
   <ItemGroup>

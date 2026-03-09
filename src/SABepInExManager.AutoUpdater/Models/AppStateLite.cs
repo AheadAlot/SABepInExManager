@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace SABepInExManager.Patcher.Models;
+namespace SABepInExManager.AutoUpdater.Models;
 
 public class AppStateLite
 {

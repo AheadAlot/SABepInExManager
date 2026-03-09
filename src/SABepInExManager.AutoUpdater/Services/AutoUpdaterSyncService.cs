@@ -8,14 +8,14 @@ using BepInEx.Logging;
 using SABepInExManager.Core.Constants;
 using SABepInExManager.Core.Models;
 using SABepInExManager.Core.Services;
-using SABepInExManager.Patcher.Models;
+using SABepInExManager.AutoUpdater.Models;
 
-namespace SABepInExManager.Patcher.Services;
+namespace SABepInExManager.AutoUpdater.Services;
 
-public class PatcherSyncService
+public class AutoUpdaterSyncService
 {
-    private const string PatcherStateFolder = "SABepInExManager.Patcher";
-    private const string PatcherStateFileName = "state.json";
+    private const string AutoUpdaterStateFolder = "SABepInExManager.AutoUpdater";
+    private const string AutoUpdaterStateFileName = "state.json";
     private const string BackupSuffix = ".bak";
     private const string PreservedPluginDirectory = "ConfigurationManager";
 
@@ -31,7 +31,7 @@ public class PatcherSyncService
     private readonly ManagedFileManifestService _managedFileManifestService = new();
     private readonly SignatureService _signatureService = new();
 
-    public PatcherSyncService(ManualLogSource logger)
+    public AutoUpdaterSyncService(ManualLogSource logger)
     {
         _logger = logger;
     }
@@ -40,7 +40,7 @@ public class PatcherSyncService
     {
         if (GetGameRoot() is not string gameRoot || string.IsNullOrWhiteSpace(gameRoot) || !Directory.Exists(gameRoot))
         {
-            _logger.LogWarning("[Patcher] 无法定位游戏根目录，跳过。");
+            _logger.LogWarning("[AutoUpdater] 无法定位游戏根目录，跳过。");
             return;
         }
 
@@ -53,14 +53,14 @@ public class PatcherSyncService
 
         if (enabledOrder.Count == 0)
         {
-            _logger.LogInfo("[Patcher] 未检测到已启用模组，跳过。");
+            _logger.LogInfo("[AutoUpdater] 未检测到已启用模组，跳过。");
             return;
         }
 
         var detectedWorkshopRoot = ResolveWorkshopRoot(gameRoot, appState);
         if (string.IsNullOrWhiteSpace(detectedWorkshopRoot) || !Directory.Exists(detectedWorkshopRoot))
         {
-            _logger.LogWarning($"[Patcher] Workshop 目录无效: {detectedWorkshopRoot}");
+            _logger.LogWarning($"[AutoUpdater] Workshop 目录无效: {detectedWorkshopRoot}");
             return;
         }
 
@@ -75,11 +75,11 @@ public class PatcherSyncService
 
         if (enabledMods.Count == 0)
         {
-            _logger.LogInfo("[Patcher] 已启用列表中的模组未在 Workshop 找到可管理条目，跳过。");
+            _logger.LogInfo("[AutoUpdater] 已启用列表中的模组未在 Workshop 找到可管理条目，跳过。");
             return;
         }
 
-        var patcherState = LoadPatcherState(gameRoot);
+        var autoUpdaterState = LoadAutoUpdaterState(gameRoot);
         var newSignatures = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var newEntries = new Dictionary<string, IReadOnlyList<ManagedFileEntry>>(StringComparer.OrdinalIgnoreCase);
 
@@ -95,7 +95,7 @@ public class PatcherSyncService
         for (var i = 0; i < enabledMods.Count; i++)
         {
             var mod = enabledMods[i];
-            patcherState.Mods.TryGetValue(mod.ModId, out var oldModState);
+            autoUpdaterState.Mods.TryGetValue(mod.ModId, out var oldModState);
             var changed = oldModState == null
                           || !string.Equals(oldModState.Signature, newSignatures[mod.ModId], StringComparison.Ordinal);
             if (changed)
@@ -107,7 +107,7 @@ public class PatcherSyncService
 
         if (firstChangedIndex < 0)
         {
-            _logger.LogInfo("[Patcher] 已启用模组无变化，跳过同步。");
+            _logger.LogInfo("[AutoUpdater] 已启用模组无变化，跳过同步。");
             return;
         }
 
@@ -119,8 +119,8 @@ public class PatcherSyncService
         {
             var mod = enabledMods[i];
             var entries = newEntries[mod.ModId];
-            patcherState.Mods.TryGetValue(mod.ModId, out var oldModState);
-            var newState = PatcherFileSyncEngine.SyncSingleMod(
+            autoUpdaterState.Mods.TryGetValue(mod.ModId, out var oldModState);
+            var newState = AutoUpdaterFileSyncEngine.SyncSingleMod(
                 gameBepInExRoot,
                 selfAssemblyPath,
                 mod.ModId,
@@ -130,15 +130,15 @@ public class PatcherSyncService
                 logInfo: message => _logger.LogInfo(message),
                 logWarning: message => _logger.LogWarning(message));
             newState.Signature = newSignatures[mod.ModId];
-            patcherState.Mods[mod.ModId] = newState;
+            autoUpdaterState.Mods[mod.ModId] = newState;
 
-            _logger.LogInfo($"[Patcher] [{mod.ModId}] 已同步 {entries.Count} 个文件。");
+            _logger.LogInfo($"[AutoUpdater] [{mod.ModId}] 已同步 {entries.Count} 个文件。");
         }
 
-        patcherState.AppId = PathConstants.WorkshopAppId;
-        patcherState.LastRunAt = now;
-        SavePatcherState(gameRoot, patcherState);
-        _logger.LogInfo($"[Patcher] 同步完成：从序号 {firstChangedIndex + 1} 开始重放，总启用模组 {enabledMods.Count}。");
+        autoUpdaterState.AppId = PathConstants.WorkshopAppId;
+        autoUpdaterState.LastRunAt = now;
+        SaveAutoUpdaterState(gameRoot, autoUpdaterState);
+        _logger.LogInfo($"[AutoUpdater] 同步完成：从序号 {firstChangedIndex + 1} 开始重放，总启用模组 {enabledMods.Count}。");
     }
 
     private static string? GetGameRoot()
@@ -166,8 +166,8 @@ public class PatcherSyncService
     private static string GetGuiStatePath(string gameRoot)
         => Path.Combine(gameRoot, PathConstants.StateRootFolder, PathConstants.StateFileName);
 
-    private static string GetPatcherStatePath(string gameRoot)
-        => Path.Combine(gameRoot, "BepInEx", "config", PatcherStateFolder, PatcherStateFileName);
+    private static string GetAutoUpdaterStatePath(string gameRoot)
+        => Path.Combine(gameRoot, "BepInEx", "config", AutoUpdaterStateFolder, AutoUpdaterStateFileName);
 
     private AppStateLite? LoadAppState(string gameRoot)
     {
@@ -184,17 +184,17 @@ public class PatcherSyncService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning($"[Patcher] 读取 GUI state 失败: {ex.Message}");
+            _logger.LogWarning($"[AutoUpdater] 读取 GUI state 失败: {ex.Message}");
             return null;
         }
     }
 
-    private PatcherSyncState LoadPatcherState(string gameRoot)
+    private AutoUpdaterSyncState LoadAutoUpdaterState(string gameRoot)
     {
-        var path = GetPatcherStatePath(gameRoot);
+        var path = GetAutoUpdaterStatePath(gameRoot);
         if (!File.Exists(path))
         {
-            return new PatcherSyncState
+            return new AutoUpdaterSyncState
             {
                 AppId = PathConstants.WorkshopAppId,
                 LastRunAt = DateTimeOffset.MinValue,
@@ -204,12 +204,12 @@ public class PatcherSyncService
         try
         {
             var json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<PatcherSyncState>(json, JsonOptions) ?? new PatcherSyncState();
+            return JsonSerializer.Deserialize<AutoUpdaterSyncState>(json, JsonOptions) ?? new AutoUpdaterSyncState();
         }
         catch (Exception ex)
         {
-            _logger.LogWarning($"[Patcher] 读取 patcher state 失败，使用空状态继续: {ex.Message}");
-            return new PatcherSyncState
+            _logger.LogWarning($"[AutoUpdater] 读取 AutoUpdater state 失败，使用空状态继续: {ex.Message}");
+            return new AutoUpdaterSyncState
             {
                 AppId = PathConstants.WorkshopAppId,
                 LastRunAt = DateTimeOffset.MinValue,
@@ -217,9 +217,9 @@ public class PatcherSyncService
         }
     }
 
-    private void SavePatcherState(string gameRoot, PatcherSyncState state)
+    private void SaveAutoUpdaterState(string gameRoot, AutoUpdaterSyncState state)
     {
-        var path = GetPatcherStatePath(gameRoot);
+        var path = GetAutoUpdaterStatePath(gameRoot);
         var dir = Path.GetDirectoryName(path);
         if (!string.IsNullOrWhiteSpace(dir))
         {

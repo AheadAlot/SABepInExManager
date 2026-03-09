@@ -5,7 +5,7 @@ using SABepInExManager.Core.Models;
 using SABepInExManager.Core.Services;
 using SABepInExManager.Tests.Common;
 
-namespace SABepInExManager.Patcher.Tests;
+namespace SABepInExManager.AutoUpdater.Tests;
 
 public class PatcherFileSyncEngineTests
 {
@@ -19,13 +19,13 @@ public class PatcherFileSyncEngineTests
         var fileName = ToSafeFileName(nameSeed.Get) + ".dll";
         fx.WriteText($"game/BepInEx/plugins/old/{fileName}", "old-content");
 
-        var oldState = new PatcherModState
+        var oldState = new AutoUpdaterModState
         {
             Signature = "old-sig",
             Files = new List<string> { $"plugins/old/{fileName}" },
         };
 
-        _ = PatcherFileSyncEngine.SyncSingleMod(
+        _ = AutoUpdaterFileSyncEngine.SyncSingleMod(
             gameRoot,
             selfAssemblyPath,
             "m1",
@@ -51,13 +51,13 @@ public class PatcherFileSyncEngineTests
         var protectedPath = fx.WriteText($"game/BepInEx/plugins/ConfigurationManager/{protectedFile}", content);
         protectedPath.Should().NotBeNullOrWhiteSpace();
 
-        var oldState = new PatcherModState
+        var oldState = new AutoUpdaterModState
         {
             Signature = "old-sig",
             Files = new List<string> { $"plugins/ConfigurationManager/{protectedFile}" },
         };
 
-        _ = PatcherFileSyncEngine.SyncSingleMod(
+        _ = AutoUpdaterFileSyncEngine.SyncSingleMod(
             gameRoot,
             selfAssemblyPath,
             "m1",
@@ -80,13 +80,13 @@ public class PatcherFileSyncEngineTests
 
         fx.WriteText($"game/BepInEx/core/{coreFile}", content);
 
-        var oldState = new PatcherModState
+        var oldState = new AutoUpdaterModState
         {
             Signature = "old-sig",
             Files = new List<string> { $"core/{coreFile}" },
         };
 
-        _ = PatcherFileSyncEngine.SyncSingleMod(
+        _ = AutoUpdaterFileSyncEngine.SyncSingleMod(
             gameRoot,
             selfAssemblyPath,
             "m1",
@@ -116,7 +116,7 @@ public class PatcherFileSyncEngineTests
             },
         };
 
-        _ = PatcherFileSyncEngine.SyncSingleMod(
+        _ = AutoUpdaterFileSyncEngine.SyncSingleMod(
             gameRoot,
             selfAssemblyPath,
             "m1",

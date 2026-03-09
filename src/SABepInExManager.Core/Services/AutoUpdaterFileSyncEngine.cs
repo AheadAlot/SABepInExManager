@@ -7,16 +7,16 @@ using SABepInExManager.Core.Models;
 
 namespace SABepInExManager.Core.Services;
 
-public static class PatcherFileSyncEngine
+public static class AutoUpdaterFileSyncEngine
 {
     private const string PreservedPluginDirectory = "ConfigurationManager";
 
-    public static PatcherModState SyncSingleMod(
+    public static AutoUpdaterModState SyncSingleMod(
         string gameBepInExRoot,
         string selfAssemblyPath,
         string modId,
         IReadOnlyList<ManagedFileEntry> entries,
-        PatcherModState? oldModState,
+        AutoUpdaterModState? oldModState,
         DateTimeOffset now,
         Action<string>? logInfo = null,
         Action<string>? logWarning = null)
@@ -47,12 +47,12 @@ public static class PatcherFileSyncEngine
                 if (File.Exists(deletePath))
                 {
                     File.Delete(deletePath);
-                    logInfo?.Invoke($"[Patcher] [{modId}] 删除旧文件: {normalized}");
+                    logInfo?.Invoke($"[AutoUpdater] [{modId}] 删除旧文件: {normalized}");
                 }
             }
             catch (Exception ex)
             {
-                logWarning?.Invoke($"[Patcher] [{modId}] 删除失败: {normalized} | {ex.Message}");
+                logWarning?.Invoke($"[AutoUpdater] [{modId}] 删除失败: {normalized} | {ex.Message}");
             }
         }
 
@@ -87,11 +87,11 @@ public static class PatcherFileSyncEngine
             }
             catch (Exception ex)
             {
-                logWarning?.Invoke($"[Patcher] [{modId}] 覆盖失败: {normalized} | {ex.Message}");
+                logWarning?.Invoke($"[AutoUpdater] [{modId}] 覆盖失败: {normalized} | {ex.Message}");
             }
         }
 
-        return new PatcherModState
+        return new AutoUpdaterModState
         {
             Signature = oldModState?.Signature ?? string.Empty,
             Files = targetSet.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList(),

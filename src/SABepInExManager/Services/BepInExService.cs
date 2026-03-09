@@ -12,8 +12,8 @@ namespace SABepInExManager.Services;
 
 public class BepInExService
 {
-    private const string PatcherFileName = "SABepInExManager.Patcher.dll";
-    private const string PatcherSubdirectoryName = "SABepInExManager_AutoUpdater";
+    private const string AutoUpdaterFileName = "SABepInExManager.AutoUpdater.dll";
+    private const string AutoUpdaterSubdirectoryName = "SABepInExManager_AutoUpdater";
 
     private static readonly HttpClient HttpClient = new()
     {
@@ -117,9 +117,9 @@ public class BepInExService
             Report("正在应用默认配置...");
             var configCopied = TryCopyBundledBepInExConfig(gameRoot);
 
-            Report("正在部署 patcher...");
-            var patcherInstallResult = TryInstallBundledPatcher(gameRoot, out var patcherMessage);
-            Report(patcherMessage);
+            Report("正在部署 AutoUpdater...");
+            var autoUpdaterInstallResult = TryInstallBundledAutoUpdater(gameRoot, out var autoUpdaterMessage);
+            Report(autoUpdaterMessage);
 
             Report("正在校验安装结果...");
             if (!IsInstalled(gameRoot))
@@ -134,11 +134,11 @@ public class BepInExService
             var configStatus = configCopied
                 ? "已写入默认 BepInEx.cfg"
                 : "未找到内置 BepInEx.cfg，已跳过配置覆盖";
-            var patcherStatus = patcherInstallResult
-                ? "已部署 patcher"
-                : $"未部署 patcher（{patcherMessage}）";
+            var autoUpdaterStatus = autoUpdaterInstallResult
+                ? "已部署 AutoUpdater"
+                : $"未部署 AutoUpdater（{autoUpdaterMessage}）";
 
-            var message = $"BepInEx 安装完成（来源：{source}），{configManagerStatus}，{configStatus}，{patcherStatus}。";
+            var message = $"BepInEx 安装完成（来源：{source}），{configManagerStatus}，{configStatus}，{autoUpdaterStatus}。";
 
             return new InstallResult { Success = true, Message = message };
         }
@@ -489,29 +489,29 @@ public class BepInExService
         return true;
     }
 
-    private static bool TryInstallBundledPatcher(string gameRoot, out string message)
+    private static bool TryInstallBundledAutoUpdater(string gameRoot, out string message)
     {
         var sourceDirCandidates = new[]
         {
-            Path.Combine(AppContext.BaseDirectory, "patcher", PatcherSubdirectoryName),
-            Path.Combine(Directory.GetCurrentDirectory(), "patcher", PatcherSubdirectoryName),
-            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "patcher", PatcherSubdirectoryName)),
+            Path.Combine(AppContext.BaseDirectory, "AutoUpdater", AutoUpdaterSubdirectoryName),
+            Path.Combine(Directory.GetCurrentDirectory(), "AutoUpdater", AutoUpdaterSubdirectoryName),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "AutoUpdater", AutoUpdaterSubdirectoryName)),
         };
 
         var sourceDir = sourceDirCandidates
-            .FirstOrDefault(dir => Directory.Exists(dir) && File.Exists(Path.Combine(dir, PatcherFileName)));
+            .FirstOrDefault(dir => Directory.Exists(dir) && File.Exists(Path.Combine(dir, AutoUpdaterFileName)));
         if (string.IsNullOrWhiteSpace(sourceDir))
         {
-            message = "未找到随程序分发的 patcher DLL，已跳过";
+            message = "未找到随程序分发的 AutoUpdater DLL，已跳过";
             return false;
         }
 
-        var targetDir = Path.Combine(gameRoot, "BepInEx", "patchers", PatcherSubdirectoryName);
+        var targetDir = Path.Combine(gameRoot, "BepInEx", "patchers", AutoUpdaterSubdirectoryName);
         Directory.CreateDirectory(targetDir);
 
         CopyDirectory(sourceDir, targetDir, overwrite: true);
 
-        message = $"patcher 已部署到 {targetDir}（包含全部依赖）";
+        message = $"AutoUpdater 已部署到 {targetDir}（包含全部依赖）";
         return true;
     }
 

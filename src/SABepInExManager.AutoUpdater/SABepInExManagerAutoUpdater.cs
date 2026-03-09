@@ -2,26 +2,26 @@ using System;
 using System.Collections.Generic;
 using BepInEx.Logging;
 using Mono.Cecil;
-using SABepInExManager.Patcher.Services;
+using SABepInExManager.AutoUpdater.Services;
 
-namespace SABepInExManager.Patcher;
+namespace SABepInExManager.AutoUpdater;
 
-public static class SABepInExManagerPatcher
+public static class SABepInExManagerAutoUpdater
 {
     public static IEnumerable<string> TargetDLLs { get; } = Array.Empty<string>();
 
-    private static readonly ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("SABepInExManager.Patcher");
+    private static readonly ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("SABepInExManager.AutoUpdater");
 
     public static void Initialize()
     {
         try
         {
-            var syncService = new PatcherSyncService(Logger);
+            var syncService = new AutoUpdaterSyncService(Logger);
             syncService.Run();
         }
         catch (Exception ex)
         {
-            Logger.LogError($"[Patcher] 初始化失败: {ex}");
+            Logger.LogError($"[AutoUpdater] 初始化失败: {ex}");
         }
     }
 
