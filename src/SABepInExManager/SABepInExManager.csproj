@@ -24,10 +24,32 @@
     <None Include="..\..\configs\BepInEx.cfg" Link="configs\BepInEx.cfg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="..\..\patcher\**\*">
+      <Link>patcher\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
     <None Include="..\..\third_party\**\*">
       <Link>third_party\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <Target Name="CopyBundledPatcherToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <BundledPatcherFiles Include="$(MSBuildThisFileDirectory)..\..\patcher\**\*" />
+    </ItemGroup>
+
+    <MakeDir Directories="$(PublishDir)patcher" Condition="'@(BundledPatcherFiles)' != ''" />
+
+    <Copy SourceFiles="@(BundledPatcherFiles)"
+          DestinationFiles="@(BundledPatcherFiles->'$(PublishDir)patcher\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true"
+          Condition="'@(BundledPatcherFiles)' != ''" />
+  </Target>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SABepInExManager.Core\SABepInExManager.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

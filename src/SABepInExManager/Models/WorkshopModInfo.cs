@@ -1,12 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using SABepInExManager.Core.Models;
 
 namespace SABepInExManager.Models;
-
-public enum ModStructureType
-{
-    Standard,
-    Flat,
-}
 
 public class WorkshopModInfo : ObservableObject
 {
