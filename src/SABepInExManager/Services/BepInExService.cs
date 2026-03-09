@@ -493,9 +493,7 @@ public class BepInExService
     {
         var sourceDirCandidates = new[]
         {
-            Path.Combine(AppContext.BaseDirectory, "AutoUpdater", AutoUpdaterSubdirectoryName),
-            Path.Combine(Directory.GetCurrentDirectory(), "AutoUpdater", AutoUpdaterSubdirectoryName),
-            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "AutoUpdater", AutoUpdaterSubdirectoryName)),
+            Path.Combine(AppContext.BaseDirectory, "patchers", AutoUpdaterSubdirectoryName),
         };
 
         var sourceDir = sourceDirCandidates
