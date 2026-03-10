@@ -27,13 +27,25 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore ./src/SABepInExManager.csproj
+        run: dotnet restore ./src/SABepInExManager/SABepInExManager.csproj
+
+      - name: Prepare BepInEx core references for patcher build
+        run: |
+          cp -R ./third_party/BepInEx ./temp-bepinex
+
+      - name: Build AutoUpdater patcher files
+        run: dotnet build ./src/SABepInExManager.AutoUpdater/SABepInExManager.AutoUpdater.csproj -c Release /p:DebugType=None /p:DebugSymbols=false /p:BepInExDir="${{ github.workspace }}/temp-bepinex/BepInEx/core"
+
+      - name: Stage patchers folder for publish
+        run: |
+          mkdir -p ./patchers/SABepInExManager_AutoUpdater
+          cp -R ./src/SABepInExManager.AutoUpdater/bin/Release/net472/. ./patchers/SABepInExManager_AutoUpdater/
 
       - name: Publish
-        run: dotnet publish ./src/SABepInExManager.csproj -c Release -r ${{ matrix.runtime }} --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false --output ./publish/${{ matrix.runtime }}
+        run: dotnet publish ./src/SABepInExManager/SABepInExManager.csproj -c Release -r ${{ matrix.runtime }} --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false --output ./publish/${{ matrix.runtime }}
 
       - name: Zip published folder
         run: |

@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>SABepInExManager.AutoUpdater</AssemblyName>
+    <Version>1.0.0</Version>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <BepInExDir Condition="'$(BepInExDir)' == ''">$(MSBuildThisFileDirectory)..\..\third_party\BepInEx\BepInEx\core</BepInExDir>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SABepInExManager.Core\SABepInExManager.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>$(BepInExDir)\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Mono.Cecil">
+      <HintPath>$(BepInExDir)\Mono.Cecil.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Serialization" />
+  </ItemGroup>
+
+  <Target Name="ValidateBepInExReferences" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(BepInExDir)\\BepInEx.dll')"
+           Text="未找到 BepInEx.dll。请确认 third_party/BepInEx 已解压，或指定 /p:BepInExDir=...。当前路径：$(BepInExDir)" />
+    <Error Condition="!Exists('$(BepInExDir)\\Mono.Cecil.dll')"
+           Text="未找到 Mono.Cecil.dll。请确认 third_party/BepInEx 已解压，或指定 /p:BepInExDir=...。当前路径：$(BepInExDir)" />
+  </Target>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <ItemGroup>
+      <!--
+        对于 net472 + PackageReference，某些 NuGet 依赖在 publish 场景下不会稳定出现在
+        ReferenceCopyLocalPaths 中。改为直接从 TargetDir 收集最终构建产物，确保像
+        System.Text.Json 这样的运行时依赖会被同步到 AutoUpdater 目录。
+      -->
+      <_PatcherCopyFiles Include="$(TargetDir)*.dll" />
+      <_PatcherCopyFiles Include="$(TargetDir)*.exe" />
+      <_GamePdbFiles Include="$(BepInExDir)\..\patchers\SABepInExManager_AutoUpdater\*.pdb" Condition="'$(DeployToGame)' == 'true'" />
+    </ItemGroup>
+
+    <MakeDir Condition="'$(DeployToGame)' == 'true'" Directories="$(BepInExDir)\..\patchers\SABepInExManager_AutoUpdater" />
+    <Delete Condition="'$(DeployToGame)' == 'true'" Files="@(_GamePdbFiles)" />
+    <Copy Condition="'$(DeployToGame)' == 'true'"
+          SourceFiles="@(_PatcherCopyFiles)"
+          DestinationFolder="$(BepInExDir)\..\patchers\SABepInExManager_AutoUpdater"
+          SkipUnchangedFiles="true" />
+  </Target>
+</Project>
+

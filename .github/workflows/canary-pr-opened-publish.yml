@@ -1,0 +1,75 @@
+name: Canary PR Opened Publish
+
+on:
+  pull_request:
+    branches:
+      - canary
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+jobs:
+  metadata:
+    name: Compute canary build metadata
+    runs-on: ubuntu-latest
+    outputs:
+      build_datetime: ${{ steps.meta.outputs.build_datetime }}
+
+    steps:
+      - name: Generate build datetime (UTC)
+        id: meta
+        run: echo "build_datetime=$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
+
+  publish:
+    name: Publish Canary (${{ matrix.runtime }})
+    runs-on: ubuntu-latest
+    needs: metadata
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runtime: win-x64
+            platform: windows
+            arch: x64
+          - runtime: linux-x64
+            platform: linux
+            arch: x64
+          - runtime: osx-x64
+            platform: macos
+            arch: x64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore ./src/SABepInExManager/SABepInExManager.csproj
+
+      - name: Prepare BepInEx core references for patcher build
+        run: |
+          cp -R ./third_party/BepInEx ./temp-bepinex
+
+      - name: Build AutoUpdater patcher files
+        run: dotnet build ./src/SABepInExManager.AutoUpdater/SABepInExManager.AutoUpdater.csproj -c Release /p:DebugType=None /p:DebugSymbols=false /p:BepInExDir="${{ github.workspace }}/temp-bepinex/BepInEx/core"
+
+      - name: Stage patchers folder for publish
+        run: |
+          mkdir -p ./patchers/SABepInExManager_AutoUpdater
+          cp -R ./src/SABepInExManager.AutoUpdater/bin/Release/net472/. ./patchers/SABepInExManager_AutoUpdater/
+
+      - name: Publish
+        run: dotnet publish ./src/SABepInExManager/SABepInExManager.csproj -c Release -r ${{ matrix.runtime }} --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false --output ./publish/${{ matrix.runtime }}
+
+      - name: Upload zipped artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-${{ matrix.arch }}-Canary-${{ needs.metadata.outputs.build_datetime }}
+          path: ./publish/${{ matrix.runtime }}
+          retention-days: 7

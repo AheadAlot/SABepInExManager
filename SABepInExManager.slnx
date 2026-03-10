@@ -1,6 +1,21 @@
 <Solution>
-  <Folder Name="/src/">
-    <Project Path="src/SABepInExManager.csproj" />
+  <Folder Name="/src/SABepInExManager.Core/">
+    <Project Path="src/SABepInExManager.Core/SABepInExManager.Core.csproj" />
+  </Folder>
+  <Folder Name="/src/SABepInExManager.AutoUpdater/">
+    <Project Path="src/SABepInExManager.AutoUpdater/SABepInExManager.AutoUpdater.csproj" />
+  </Folder>
+  <Folder Name="/src/SABepInExManager/">
+    <Project Path="src/SABepInExManager/SABepInExManager.csproj" />
+  </Folder>
+  <Folder Name="/tests/SABepInExManager.Core.Tests/">
+    <Project Path="tests/SABepInExManager.Core.Tests/SABepInExManager.Core.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/SABepInExManager.Manager.Tests/">
+    <Project Path="tests/SABepInExManager.Manager.Tests/SABepInExManager.Manager.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/SABepInExManager.AutoUpdater.Tests/">
+    <Project Path="tests/SABepInExManager.AutoUpdater.Tests/SABepInExManager.AutoUpdater.Tests.csproj" />
   </Folder>
 </Solution>
 
