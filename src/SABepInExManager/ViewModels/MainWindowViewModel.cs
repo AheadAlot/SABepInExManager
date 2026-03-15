@@ -28,6 +28,7 @@ public class HomePageViewModel : ViewModelBase
     private WorkshopModInfo? _selectedMod;
     private bool _isBepInExInstalled;
     private bool _isRefreshingMods;
+    private int _conflictedModCount;
 
     public HomePageViewModel()
     {
@@ -41,8 +42,15 @@ public class HomePageViewModel : ViewModelBase
         MoveSelectedDownCommand = new RelayCommand(MoveSelectedDown);
         InstallBepInExCommand = new AsyncRelayCommand(InstallBepInExAsync);
         OpenSelectedModFolderCommand = new RelayCommand(OpenSelectedModFolder);
+        ClearLogsCommand = new RelayCommand(ClearLogs);
 
         Mods.CollectionChanged += OnModsCollectionChanged;
+        Logs.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(LatestLogMessage));
+            SyncRecentLogs();
+        };
+        SyncRecentLogs();
     }
 
     public ObservableCollection<WorkshopModInfo> Mods { get; } = new();
@@ -54,6 +62,8 @@ public class HomePageViewModel : ViewModelBase
             Message = "就绪。",
         },
     ];
+
+    public ObservableCollection<LogEntry> RecentLogs { get; } = new();
 
     public string GameRootPath
     {
@@ -87,6 +97,14 @@ public class HomePageViewModel : ViewModelBase
 
     public string BepInExStatusText => IsBepInExInstalled ? "已安装" : "未安装";
     public string InstallBepInExButtonText => IsBepInExInstalled ? "重装" : "安装";
+    public string LatestLogMessage => Logs.Count > 0 ? Logs[^1].Message : "就绪。";
+    public int ManagedModCount => Mods.Count;
+    public int EnabledModCount => Mods.Count(m => m.IsEnabled);
+    public int ConflictedModCount
+    {
+        get => _conflictedModCount;
+        private set => SetProperty(ref _conflictedModCount, value);
+    }
 
     public IAsyncRelayCommand RefreshModsCommand { get; }
     public IAsyncRelayCommand DetectGameRootPathCommand { get; }
@@ -98,6 +116,7 @@ public class HomePageViewModel : ViewModelBase
     public IRelayCommand MoveSelectedDownCommand { get; }
     public IAsyncRelayCommand InstallBepInExCommand { get; }
     public IRelayCommand OpenSelectedModFolderCommand { get; }
+    public IRelayCommand ClearLogsCommand { get; }
 
     public async Task InitializeAsync()
     {
@@ -199,6 +218,7 @@ public class HomePageViewModel : ViewModelBase
 
         SelectedMod = Mods.FirstOrDefault();
         AppendLog($"扫描完成：找到 {Mods.Count} 个可管理 mod。", reset: true);
+        UpdateModSummary();
         PersistEnabledState();
         await SaveConfigAsync();
     }
@@ -396,6 +416,9 @@ public class HomePageViewModel : ViewModelBase
             return;
         }
 
+        OnPropertyChanged(nameof(ManagedModCount));
+        OnPropertyChanged(nameof(EnabledModCount));
+        UpdateModSummary();
         PersistEnabledState();
     }
 
@@ -411,6 +434,8 @@ public class HomePageViewModel : ViewModelBase
             return;
         }
 
+        OnPropertyChanged(nameof(EnabledModCount));
+        UpdateModSummary();
         PersistEnabledState();
     }
 
@@ -567,6 +592,39 @@ public class HomePageViewModel : ViewModelBase
         while (Logs.Count > MaxLogEntries)
         {
             Logs.RemoveAt(0);
+        }
+
+        OnPropertyChanged(nameof(LatestLogMessage));
+        SyncRecentLogs();
+    }
+
+    private void ClearLogs()
+    {
+        Logs.Clear();
+        AppendLog("日志已清空。", reset: false);
+    }
+
+    private void SyncRecentLogs()
+    {
+        RecentLogs.Clear();
+        foreach (var item in Logs.TakeLast(5))
+        {
+            RecentLogs.Add(item);
+        }
+    }
+
+    private void UpdateModSummary()
+    {
+        OnPropertyChanged(nameof(ManagedModCount));
+        OnPropertyChanged(nameof(EnabledModCount));
+
+        try
+        {
+            ConflictedModCount = _workshopService.BuildConflicts(GetEnabledModsInOrder()).Count;
+        }
+        catch
+        {
+            ConflictedModCount = 0;
         }
     }
 }

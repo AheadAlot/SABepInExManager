@@ -1,0 +1,75 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SABepInExManager.ViewModels"
+             x:Class="SABepInExManager.Views.HomeDashboardView"
+             x:DataType="vm:HomeDashboardViewModel">
+
+    <Grid Margin="12" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
+        <Border Classes="status-banner missing"
+                Classes.installed="{Binding HomePage.IsBepInExInstalled}">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                <TextBlock Text="{Binding HomePage.BepInExStatusText, StringFormat=BepInEx 状态：{0}}"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1"
+                           Classes="secondary-text"
+                           Text="主页聚焦总览与快捷操作。详细配置请到设置页。"
+                           VerticalAlignment="Center"/>
+                <Button Grid.Column="2"
+                        Classes="action-button primary-action"
+                        Content="{Binding HomePage.InstallBepInExButtonText}"
+                        Command="{Binding HomePage.InstallBepInExCommand}"/>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="12">
+            <Border Classes="card">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
+                    <TextBlock Text="环境状态" FontSize="16" FontWeight="Bold"/>
+                    <TextBlock Grid.Row="1" Text="{Binding HomePage.BepInExStatusText, StringFormat=BepInEx：{0}}"/>
+                    <TextBlock Grid.Row="2" Text="{Binding HomePage.GameRootPath, StringFormat=游戏目录：{0}}" Classes="secondary-text" TextWrapping="Wrap"/>
+                    <TextBlock Grid.Row="3" Text="{Binding HomePage.WorkshopContentPath, StringFormat=工坊目录：{0}}" Classes="secondary-text" TextWrapping="Wrap"/>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="1" Classes="card">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
+                    <TextBlock Text="Mod 概览" FontSize="16" FontWeight="Bold"/>
+                    <TextBlock Grid.Row="1" Text="{Binding HomePage.ManagedModCount, StringFormat=已检测 Mod：{0}}"/>
+                    <TextBlock Grid.Row="2" Text="{Binding HomePage.EnabledModCount, StringFormat=已启用：{0}}"/>
+                    <TextBlock Grid.Row="3" Text="{Binding HomePage.ConflictedModCount, StringFormat=冲突路径：{0}}"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2" Classes="card">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="action-button secondary-action"
+                        Content="冲突预览"
+                        IsEnabled="{Binding HomePage.IsBepInExInstalled}"
+                        Command="{Binding HomePage.PreviewConflictsCommand}"/>
+                <Button Classes="action-button secondary-action"
+                        Content="创建备份"
+                        IsEnabled="{Binding HomePage.IsBepInExInstalled}"
+                        Command="{Binding HomePage.CreateBaselineCommand}"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="3" Classes="card">
+            <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                <TextBlock Text="最近日志" FontSize="16" FontWeight="Bold"/>
+                <ListBox Grid.Row="1" ItemsSource="{Binding HomePage.RecentLogs}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <TextBlock Text="{Binding TimestampText}" Classes="secondary-text"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Message}" TextWrapping="Wrap"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
+

@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SABepInExManager.ViewModels"
+             x:Class="SABepInExManager.Views.SettingsPageView"
+             x:DataType="vm:SettingsPageViewModel">
+
+    <Grid Margin="12" RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" RowSpacing="12">
+        <TextBlock Text="设置" FontSize="22" FontWeight="Bold"/>
+
+        <Border Grid.Row="1" Classes="card">
+            <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
+                <TextBlock Text="路径设置" FontSize="16" FontWeight="Bold"/>
+                <Grid Grid.Row="1" RowDefinitions="Auto,Auto" RowSpacing="8">
+                    <TextBox Watermark="游戏根目录"
+                             Text="{Binding HomePage.GameRootPath}"/>
+                    <TextBox Grid.Row="1"
+                             Watermark="创意工坊路径"
+                             Text="{Binding HomePage.WorkshopContentPath}"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Classes="card">
+            <StackPanel Spacing="6">
+                <TextBlock Text="扫描设置" FontWeight="SemiBold"/>
+                <TextBlock Text="启动时自动扫描、递归扫描、忽略临时文件（占位）。" Classes="secondary-text"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="3" Classes="card">
+            <StackPanel Spacing="6">
+                <TextBlock Text="备份设置" FontWeight="SemiBold"/>
+                <TextBlock Text="自动备份、保留数量、命名规则（占位）。" Classes="secondary-text"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="4" Classes="card">
+            <StackPanel Spacing="6">
+                <TextBlock Text="界面设置" FontWeight="SemiBold"/>
+                <TextBlock Text="主题、列表密度、字体缩放、日志级别（占位）。" Classes="secondary-text"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="5" Classes="card">
+            <StackPanel Spacing="6">
+                <TextBlock Text="高级设置" FontWeight="SemiBold"/>
+                <TextBlock Text="启动参数、自定义插件目录、调试模式（占位）。" Classes="secondary-text"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>
+

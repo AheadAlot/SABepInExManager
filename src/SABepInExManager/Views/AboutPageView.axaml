@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SABepInExManager.ViewModels"
+             x:Class="SABepInExManager.Views.AboutPageView"
+             x:DataType="vm:AboutPageViewModel">
+
+    <Grid Margin="12" RowDefinitions="Auto,Auto,*" RowSpacing="12">
+        <TextBlock Text="关于" FontSize="22" FontWeight="Bold"/>
+
+        <Border Grid.Row="1" Classes="card">
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
+                <TextBlock Text="{Binding AppName}" FontSize="18" FontWeight="Bold"/>
+                <TextBlock Grid.Row="1" Text="{Binding Description}" Classes="secondary-text"/>
+                <TextBlock Grid.Row="2" Text="{Binding License, StringFormat=License：{0}}"/>
+                <TextBlock Grid.Row="3" Text="{Binding RepositoryUrl, StringFormat=GitHub：{0}}" Classes="secondary-text"/>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Classes="card">
+            <TextBlock Text="技术栈：AvaloniaUI · .NET · CommunityToolkit.Mvvm" Classes="secondary-text"/>
+        </Border>
+    </Grid>
+</UserControl>
+
