@@ -77,7 +77,6 @@ public class AutoUpdaterSyncStateCompatibilityTests
                     {
                         ["plugins/a.dll"] = new AutoUpdaterCachedFileState
                         {
-                            TargetRelativePath = "plugins/a.dll",
                             SourcePath = @"D:\mods\m1\a.dll",
                             IsDirectory = false,
                             Length = length,

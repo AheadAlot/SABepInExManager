@@ -15,7 +15,8 @@ namespace SABepInExManager.AutoUpdater.Services;
 public class AutoUpdaterSyncService
 {
     private const string AutoUpdaterStateFolder = "SABepInExManager.AutoUpdater";
-    private const string AutoUpdaterStateFileName = "state.json";
+    private const string AutoUpdaterStateDbFileName = "state.db";
+    private const string LegacyAutoUpdaterStateJsonFileName = "state.json";
     private const string BackupSuffix = ".bak";
     private const string PreservedPluginDirectory = "ConfigurationManager";
 
@@ -30,6 +31,7 @@ public class AutoUpdaterSyncService
     private readonly WorkshopModDiscoveryService _modDiscoveryService = new();
     private readonly ManagedFileManifestService _managedFileManifestService = new();
     private readonly SignatureService _signatureService = new();
+    private readonly AutoUpdaterSqliteStateStore _stateStore = new();
 
     public AutoUpdaterSyncService(ManualLogSource logger)
     {
@@ -200,8 +202,11 @@ public class AutoUpdaterSyncService
     private static string GetGuiStatePath(string gameRoot)
         => Path.Combine(gameRoot, PathConstants.StateRootFolder, PathConstants.StateFileName);
 
-    private static string GetAutoUpdaterStatePath(string gameRoot)
-        => Path.Combine(gameRoot, "BepInEx", "config", AutoUpdaterStateFolder, AutoUpdaterStateFileName);
+    private static string GetAutoUpdaterStateDbPath(string gameRoot)
+        => Path.Combine(gameRoot, "BepInEx", "config", AutoUpdaterStateFolder, AutoUpdaterStateDbFileName);
+
+    private static string GetLegacyAutoUpdaterStateJsonPath(string gameRoot)
+        => Path.Combine(gameRoot, "BepInEx", "config", AutoUpdaterStateFolder, LegacyAutoUpdaterStateJsonFileName);
 
     private AppStateLite? LoadAppState(string gameRoot)
     {
@@ -225,47 +230,92 @@ public class AutoUpdaterSyncService
 
     private AutoUpdaterSyncState LoadAutoUpdaterState(string gameRoot)
     {
-        var path = GetAutoUpdaterStatePath(gameRoot);
-        if (!File.Exists(path))
-        {
-            return new AutoUpdaterSyncState
-            {
-                AppId = PathConstants.WorkshopAppId,
-                LastRunAt = DateTimeOffset.MinValue,
-            };
-        }
+        var dbPath = GetAutoUpdaterStateDbPath(gameRoot);
+        var legacyJsonPath = GetLegacyAutoUpdaterStateJsonPath(gameRoot);
 
         try
         {
-            var json = File.ReadAllText(path);
-            return EnsureStateDefaults(JsonSerializer.Deserialize<AutoUpdaterSyncState>(json, JsonOptions) ?? new AutoUpdaterSyncState());
+            if (!File.Exists(dbPath) && File.Exists(legacyJsonPath))
+            {
+                var legacyState = TryLoadLegacyJsonState(legacyJsonPath);
+                if (legacyState != null)
+                {
+                    _stateStore.Save(dbPath, legacyState);
+                    BackupLegacyJsonState(legacyJsonPath);
+                }
+            }
+
+            var state = _stateStore.Load(dbPath);
+            return EnsureStateDefaults(state);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning($"[AutoUpdater] 读取 AutoUpdater state 失败，使用空状态继续: {ex.Message}");
+            _logger.LogWarning($"[AutoUpdater] 读取 SQLite state 失败，使用空状态继续: {ex.Message}");
             return new AutoUpdaterSyncState
             {
                 AppId = PathConstants.WorkshopAppId,
                 LastRunAt = DateTimeOffset.MinValue,
             };
+        }
+    }
+
+    private AutoUpdaterSyncState? TryLoadLegacyJsonState(string legacyJsonPath)
+    {
+        try
+        {
+            var json = File.ReadAllText(legacyJsonPath);
+            var state = JsonSerializer.Deserialize<AutoUpdaterSyncState>(json, JsonOptions);
+            if (state == null)
+            {
+                return null;
+            }
+
+            _logger.LogInfo("[AutoUpdater] 检测到旧版 state.json，已准备迁移到 SQLite。");
+            return EnsureStateDefaults(state);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning($"[AutoUpdater] 读取旧版 state.json 失败，跳过迁移: {ex.Message}");
+            return null;
+        }
+    }
+
+    private void BackupLegacyJsonState(string legacyJsonPath)
+    {
+        try
+        {
+            var backupPath = legacyJsonPath + BackupSuffix;
+            File.Copy(legacyJsonPath, backupPath, overwrite: true);
+            File.Delete(legacyJsonPath);
+            _logger.LogInfo($"[AutoUpdater] 已完成 state.json -> SQLite 迁移，备份文件: {backupPath}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning($"[AutoUpdater] 迁移后备份旧 state.json 失败: {ex.Message}");
         }
     }
 
     private void SaveAutoUpdaterState(string gameRoot, AutoUpdaterSyncState state)
     {
-        var path = GetAutoUpdaterStatePath(gameRoot);
-        var dir = Path.GetDirectoryName(path);
-        if (!string.IsNullOrWhiteSpace(dir))
-        {
-            Directory.CreateDirectory(dir);
-        }
+        var dbPath = GetAutoUpdaterStateDbPath(gameRoot);
 
-        var json = JsonSerializer.Serialize(state, JsonOptions);
-        File.WriteAllText(path, json);
+        try
+        {
+            _stateStore.Save(dbPath, EnsureStateDefaults(state));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning($"[AutoUpdater] 写入 SQLite state 失败: {ex.Message}");
+        }
     }
 
     private static AutoUpdaterSyncState EnsureStateDefaults(AutoUpdaterSyncState state)
     {
+        if (string.IsNullOrWhiteSpace(state.AppId))
+        {
+            state.AppId = PathConstants.WorkshopAppId;
+        }
+
         state.Mods ??= new Dictionary<string, AutoUpdaterModState>(StringComparer.OrdinalIgnoreCase);
         foreach (var pair in state.Mods)
         {
@@ -295,7 +345,6 @@ public class AutoUpdaterSyncService
                     .Append("|DIR;");
                 newCache[target] = new AutoUpdaterCachedFileState
                 {
-                    TargetRelativePath = target,
                     SourcePath = entry.SourcePath,
                     IsDirectory = true,
                     Length = 0,
@@ -326,7 +375,6 @@ public class AutoUpdaterSyncService
 
             newCache[target] = new AutoUpdaterCachedFileState
             {
-                TargetRelativePath = target,
                 SourcePath = fullSourcePath,
                 IsDirectory = false,
                 Length = fileInfo.Length,
