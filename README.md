@@ -4,13 +4,11 @@
 
 ## 功能
 
-- 一键加载已选模组，将已启用 Mod 按顺序写入到游戏根目录。
+- 参考[群芳更多恋人自动更新](https://github.com/lincexu/LinceAutoUpdater)，通过名为AutoUpdater的BepInEx patcher，在游戏启动时自动检测所有BepInEx模组并更新。只需勾选需要的模组并排序，其他步骤全自动完成
 - 一键安装BepInEx与ConfigurationManager（默认启用`Logging.Console`避免第一次Hook失败）
-- 一键更新：发现已启用 Mod 有变更时，可按当前优先级重新应用。
 - 自动探测游戏根目录，也可手动填写/调整。
 - 自动探测创意工坊目录，也可手动指定。
 - 扫描并展示BepInEx模组（仅处理工坊条目中包含 `BepInEx/` 的 Mod）。
-- 勾选启用/禁用 Mod；支持多 Mod 同时启用。
 - 拖拽排序调整优先级：列表**靠后**的 Mod 优先级更高，发生同路径冲突时会覆盖靠前的 Mod。
 - 冲突预览：在应用前预览可能的文件冲突与最终生效项。
 - 基线备份/回滚：
@@ -47,19 +45,19 @@ dotnet build ./SABepInExManager.slnx -c Debug
 Windows x64：
 
 ```bash
-dotnet publish ./src/SABepInExManager/SABepInExManager.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false
+dotnet publish ./src/SABepInExManager/SABepInExManager.csproj -c Release -r win-x64 --self-contained true
 ```
 
 macOS Apple Silicon：
 
 ```bash
-dotnet publish ./src/SABepInExManager/SABepInExManager.csproj -c Release -r osx-arm64 --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false
+dotnet publish ./src/SABepInExManager/SABepInExManager.csproj -c Release -r osx-arm64 --self-contained true
 ```
 
 Linux x64：
 
 ```bash
-dotnet publish ./src/SABepInExManager/SABepInExManager.csproj -c Release -r linux-x64 --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false
+dotnet publish ./src/SABepInExManager/SABepInExManager.csproj -c Release -r linux-x64 --self-contained true
 ```
 
 ## 使用的开源软件信息与声明

@@ -15,5 +15,15 @@ public class AutoUpdaterModState
     public string Signature { get; set; } = string.Empty;
     public List<string> Files { get; set; } = new();
     public DateTimeOffset LastSyncedAt { get; set; }
+    public Dictionary<string, AutoUpdaterCachedFileState> CachedFiles { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+}
+
+public class AutoUpdaterCachedFileState
+{
+    public string SourcePath { get; set; } = string.Empty;
+    public bool IsDirectory { get; set; }
+    public long Length { get; set; }
+    public DateTimeOffset LastWriteTimeUtc { get; set; }
+    public string ContentHash { get; set; } = string.Empty;
 }
 
