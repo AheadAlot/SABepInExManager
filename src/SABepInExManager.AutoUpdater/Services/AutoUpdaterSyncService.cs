@@ -82,13 +82,17 @@ public class AutoUpdaterSyncService
         var autoUpdaterState = LoadAutoUpdaterState(gameRoot);
         var newSignatures = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var newEntries = new Dictionary<string, IReadOnlyList<ManagedFileEntry>>(StringComparer.OrdinalIgnoreCase);
+        var newCaches = new Dictionary<string, Dictionary<string, AutoUpdaterCachedFileState>>(StringComparer.OrdinalIgnoreCase);
 
         for (var i = 0; i < enabledMods.Count; i++)
         {
             var mod = enabledMods[i];
             var entries = _managedFileManifestService.BuildEntries(mod);
             newEntries[mod.ModId] = entries;
-            newSignatures[mod.ModId] = _signatureService.BuildManagedSignature(entries);
+            autoUpdaterState.Mods.TryGetValue(mod.ModId, out var oldModState);
+            var computed = BuildManagedSignatureWithCache(entries, oldModState);
+            newSignatures[mod.ModId] = computed.Signature;
+            newCaches[mod.ModId] = computed.CachedFiles;
         }
 
         var firstChangedIndex = -1;
@@ -107,6 +111,35 @@ public class AutoUpdaterSyncService
 
         if (firstChangedIndex < 0)
         {
+            var cacheUpdated = false;
+            for (var i = 0; i < enabledMods.Count; i++)
+            {
+                var mod = enabledMods[i];
+                autoUpdaterState.Mods.TryGetValue(mod.ModId, out var oldModState);
+                if (oldModState == null)
+                {
+                    continue;
+                }
+
+                if (!NeedsCacheWrite(oldModState, newCaches[mod.ModId]))
+                {
+                    continue;
+                }
+
+                oldModState.Signature = newSignatures[mod.ModId];
+                oldModState.CachedFiles = newCaches[mod.ModId];
+                cacheUpdated = true;
+            }
+
+            if (cacheUpdated)
+            {
+                autoUpdaterState.AppId = PathConstants.WorkshopAppId;
+                autoUpdaterState.LastRunAt = DateTimeOffset.Now;
+                SaveAutoUpdaterState(gameRoot, autoUpdaterState);
+                _logger.LogInfo("[AutoUpdater] 已启用模组无变化，已刷新缓存状态。");
+                return;
+            }
+
             _logger.LogInfo("[AutoUpdater] 已启用模组无变化，跳过同步。");
             return;
         }
@@ -130,6 +163,7 @@ public class AutoUpdaterSyncService
                 logInfo: message => _logger.LogInfo(message),
                 logWarning: message => _logger.LogWarning(message));
             newState.Signature = newSignatures[mod.ModId];
+            newState.CachedFiles = newCaches[mod.ModId];
             autoUpdaterState.Mods[mod.ModId] = newState;
 
             _logger.LogInfo($"[AutoUpdater] [{mod.ModId}] 已同步 {entries.Count} 个文件。");
@@ -204,7 +238,7 @@ public class AutoUpdaterSyncService
         try
         {
             var json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<AutoUpdaterSyncState>(json, JsonOptions) ?? new AutoUpdaterSyncState();
+            return EnsureStateDefaults(JsonSerializer.Deserialize<AutoUpdaterSyncState>(json, JsonOptions) ?? new AutoUpdaterSyncState());
         }
         catch (Exception ex)
         {
@@ -229,5 +263,140 @@ public class AutoUpdaterSyncService
         var json = JsonSerializer.Serialize(state, JsonOptions);
         File.WriteAllText(path, json);
     }
+
+    private static AutoUpdaterSyncState EnsureStateDefaults(AutoUpdaterSyncState state)
+    {
+        state.Mods ??= new Dictionary<string, AutoUpdaterModState>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pair in state.Mods)
+        {
+            pair.Value.Files ??= [];
+            pair.Value.CachedFiles ??= new Dictionary<string, AutoUpdaterCachedFileState>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        return state;
+    }
+
+    private (string Signature, Dictionary<string, AutoUpdaterCachedFileState> CachedFiles) BuildManagedSignatureWithCache(
+        IReadOnlyList<ManagedFileEntry> entries,
+        AutoUpdaterModState? oldModState)
+    {
+        var oldCache = oldModState?.CachedFiles ?? new Dictionary<string, AutoUpdaterCachedFileState>(StringComparer.OrdinalIgnoreCase);
+        var newCache = new Dictionary<string, AutoUpdaterCachedFileState>(StringComparer.OrdinalIgnoreCase);
+        var builder = new System.Text.StringBuilder();
+
+        foreach (var entry in entries
+                     .OrderBy(x => x.TargetRelativePath, StringComparer.OrdinalIgnoreCase)
+                     .ThenBy(x => x.SourcePath, StringComparer.OrdinalIgnoreCase))
+        {
+            var target = NormalizeRelativePath(entry.TargetRelativePath);
+            if (entry.IsDirectory)
+            {
+                builder.Append(target)
+                    .Append("|DIR;");
+                newCache[target] = new AutoUpdaterCachedFileState
+                {
+                    TargetRelativePath = target,
+                    SourcePath = entry.SourcePath,
+                    IsDirectory = true,
+                    Length = 0,
+                    LastWriteTimeUtc = DateTimeOffset.MinValue,
+                    ContentHash = string.Empty,
+                };
+                continue;
+            }
+
+            if (!File.Exists(entry.SourcePath))
+            {
+                continue;
+            }
+
+            var fullSourcePath = Path.GetFullPath(entry.SourcePath);
+            var fileInfo = new FileInfo(fullSourcePath);
+            var lastWrite = new DateTimeOffset(fileInfo.LastWriteTimeUtc, TimeSpan.Zero);
+
+            var cachedHash = TryGetCachedHash(oldCache, target, fullSourcePath, fileInfo.Length, lastWrite);
+            var hash = string.IsNullOrWhiteSpace(cachedHash)
+                ? _signatureService.ComputeFileSha256Hex(fullSourcePath)
+                : cachedHash;
+
+            builder.Append(target)
+                .Append('|')
+                .Append(hash)
+                .Append(';');
+
+            newCache[target] = new AutoUpdaterCachedFileState
+            {
+                TargetRelativePath = target,
+                SourcePath = fullSourcePath,
+                IsDirectory = false,
+                Length = fileInfo.Length,
+                LastWriteTimeUtc = lastWrite,
+                ContentHash = hash,
+            };
+        }
+
+        return (_signatureService.ComputeUtf8Sha256Hex(builder.ToString()), newCache);
+    }
+
+    private static string? TryGetCachedHash(
+        IReadOnlyDictionary<string, AutoUpdaterCachedFileState> oldCache,
+        string targetRelativePath,
+        string sourcePath,
+        long length,
+        DateTimeOffset lastWriteUtc)
+    {
+        if (!oldCache.TryGetValue(targetRelativePath, out var cached)
+            || cached.IsDirectory
+            || string.IsNullOrWhiteSpace(cached.ContentHash))
+        {
+            return null;
+        }
+
+        if (!string.Equals(Path.GetFullPath(cached.SourcePath), sourcePath, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        if (cached.Length != length)
+        {
+            return null;
+        }
+
+        return cached.LastWriteTimeUtc.UtcDateTime == lastWriteUtc.UtcDateTime
+            ? cached.ContentHash
+            : null;
+    }
+
+    private static bool NeedsCacheWrite(AutoUpdaterModState state, IReadOnlyDictionary<string, AutoUpdaterCachedFileState> newCache)
+    {
+        var oldCache = state.CachedFiles ?? new Dictionary<string, AutoUpdaterCachedFileState>(StringComparer.OrdinalIgnoreCase);
+        if (oldCache.Count != newCache.Count)
+        {
+            return true;
+        }
+
+        foreach (var pair in newCache)
+        {
+            if (!oldCache.TryGetValue(pair.Key, out var oldEntry))
+            {
+                return true;
+            }
+
+            var newEntry = pair.Value;
+            if (oldEntry.IsDirectory != newEntry.IsDirectory
+                || oldEntry.Length != newEntry.Length
+                || oldEntry.LastWriteTimeUtc.UtcDateTime != newEntry.LastWriteTimeUtc.UtcDateTime
+                || !string.Equals(oldEntry.SourcePath, newEntry.SourcePath, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(oldEntry.ContentHash, newEntry.ContentHash, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string NormalizeRelativePath(string path)
+        => path.Replace('\\', '/').TrimStart('/');
 }
 
