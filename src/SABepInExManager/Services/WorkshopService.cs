@@ -71,6 +71,7 @@ public class WorkshopService
     public IEnumerable<string> EnumerateManagedRelativePaths(string modBepInExRoot, ModStructureType structureType = ModStructureType.Standard)
         => _managedFileManifestService
             .BuildEntries("_", modBepInExRoot, structureType)
+            .Where(x => !x.IsDirectory)
             .Select(x => x.TargetRelativePath);
 
     public string BuildManagedSignature(string modBepInExRoot, ModStructureType structureType = ModStructureType.Standard)
