@@ -18,15 +18,16 @@ public class ModApplyService
         WriteIndented = true,
     };
 
-    public void CreateOrUpdateBaseline(string gameRoot)
+    public void CreateBaseline(string gameRoot)
     {
         EnsureGameRootValid(gameRoot);
 
-        var baselineRoot = GetBaselineRoot(gameRoot);
-        if (Directory.Exists(baselineRoot))
-        {
-            Directory.Delete(baselineRoot, recursive: true);
-        }
+        var baselineContainerRoot = GetBaselineContainerRoot(gameRoot);
+        Directory.CreateDirectory(baselineContainerRoot);
+
+        var baselineRoot = Path.Combine(
+            baselineContainerRoot,
+            DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString());
 
         Directory.CreateDirectory(baselineRoot);
         foreach (var sub in PathConstants.ManagedBepInExSubDirs)
@@ -47,8 +48,8 @@ public class ModApplyService
     public void RestoreBaseline(string gameRoot)
     {
         EnsureGameRootValid(gameRoot);
-        var baselineRoot = GetBaselineRoot(gameRoot);
-        if (!Directory.Exists(baselineRoot))
+        var baselineRoot = GetLatestBaselineRoot(gameRoot);
+        if (string.IsNullOrWhiteSpace(baselineRoot) || !Directory.Exists(baselineRoot))
         {
             throw new InvalidOperationException("未找到备份，请先创建备份。");
         }
@@ -165,8 +166,44 @@ public class ModApplyService
     private static string GetStateRoot(string gameRoot)
         => Path.Combine(gameRoot, PathConstants.StateRootFolder);
 
-    private static string GetBaselineRoot(string gameRoot)
+    private static string GetBaselineContainerRoot(string gameRoot)
         => Path.Combine(GetStateRoot(gameRoot), PathConstants.BaselineFolder);
+
+    private static string? GetLatestBaselineRoot(string gameRoot)
+    {
+        var baselineContainerRoot = GetBaselineContainerRoot(gameRoot);
+        if (!Directory.Exists(baselineContainerRoot))
+        {
+            return null;
+        }
+
+        var hasLegacyBaselineContent = PathConstants.ManagedBepInExSubDirs
+            .Select(sub => Path.Combine(baselineContainerRoot, sub))
+            .Any(Directory.Exists);
+        if (hasLegacyBaselineContent)
+        {
+            return baselineContainerRoot;
+        }
+
+        var latestSnapshot = Directory
+            .GetDirectories(baselineContainerRoot)
+            .Select(path =>
+            {
+                var name = Path.GetFileName(path);
+                var isValid = long.TryParse(name, out var timestamp);
+                return new
+                {
+                    Path = path,
+                    IsValid = isValid,
+                    Timestamp = isValid ? timestamp : -1,
+                };
+            })
+            .Where(x => x.IsValid)
+            .OrderByDescending(x => x.Timestamp)
+            .FirstOrDefault();
+
+        return latestSnapshot?.Path;
+    }
 
     private static string GetStateFile(string gameRoot)
         => Path.Combine(GetStateRoot(gameRoot), PathConstants.StateFileName);

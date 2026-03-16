@@ -371,8 +371,8 @@ public class HomePageViewModel : ViewModelBase
                 return;
             }
 
-            _modApplyService.CreateOrUpdateBaseline(GameRootPath);
-            AppendLog("Baseline 已创建/更新。", reset: true);
+            _modApplyService.CreateBaseline(GameRootPath);
+            AppendLog("备份已创建。", reset: true);
         }
         catch (Exception ex)
         {

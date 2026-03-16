@@ -8,14 +8,14 @@
         <TextBlock Text="备份与恢复" FontSize="22" FontWeight="Bold"/>
 
         <TextBlock Grid.Row="1"
-                   Text="备份会保存当前游戏目录下被 Mod 管理器接管的文件状态，恢复时将回滚到最近一次备份。建议在大规模启用、禁用或调整 Mod 顺序前先更新备份。"
+                   Text="备份会保存当前游戏目录下被 Mod 管理器接管的文件状态。每次创建备份都会生成一个以 Unix 时间戳命名的新快照目录，恢复时将回滚到最近一次备份。"
                    Classes="secondary-text"
                    TextWrapping="Wrap"/>
 
         <Border Grid.Row="2" Classes="card">
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button Classes="action-button secondary-action"
-                        Content="创建/更新备份"
+                        Content="创建备份"
                         IsEnabled="{Binding HomePage.IsBepInExInstalled}"
                         Command="{Binding HomePage.CreateBaselineCommand}"/>
                 <Button Classes="action-button warning-action"
