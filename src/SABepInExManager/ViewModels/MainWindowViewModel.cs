@@ -65,6 +65,7 @@ public class HomePageViewModel : ViewModelBase
     ];
 
     public ObservableCollection<LogEntry> RecentLogs { get; } = new();
+    public ObservableCollection<ConflictPreviewItem> ConflictPreviewItems { get; } = new();
 
     public string GameRootPath
     {
@@ -404,6 +405,8 @@ public class HomePageViewModel : ViewModelBase
 
     private void PreviewConflicts()
     {
+        ConflictPreviewItems.Clear();
+
         try
         {
             ValidateGameRootForActionsOrThrow();
@@ -427,11 +430,44 @@ public class HomePageViewModel : ViewModelBase
             return;
         }
 
+        foreach (var item in conflicts)
+        {
+            ConflictPreviewItems.Add(new ConflictPreviewItem
+            {
+                RelativeToGameRootPath = ToGameRootRelativePath(item.RelativePath),
+                ExistsIn = string.Join("、", item.ModIds.Select(FormatModLabel)),
+                Winner = FormatModLabel(item.WinnerModId),
+            });
+        }
+
         AppendLog($"检测到 {conflicts.Count} 个冲突路径（仅展示前 30 条）：", reset: true);
         foreach (var item in conflicts.Take(30))
         {
             AppendLog($"- {item.RelativePath} | 冲突: {string.Join(", ", item.ModIds)} | 最终生效: {item.WinnerModId}");
         }
+    }
+
+    private string ToGameRootRelativePath(string conflictRelativePath)
+    {
+        var normalized = (conflictRelativePath ?? string.Empty)
+            .Replace('\\', '/')
+            .TrimStart('/');
+        return $"BepInEx/{normalized}";
+    }
+
+    private string FormatModLabel(string modId)
+    {
+        if (string.IsNullOrWhiteSpace(modId))
+        {
+            return string.Empty;
+        }
+
+        var mod = Mods.FirstOrDefault(m => string.Equals(m.ModId, modId, StringComparison.OrdinalIgnoreCase));
+        var name = mod?.DisplayName?.Trim();
+
+        return string.IsNullOrWhiteSpace(name) || string.Equals(name, modId, StringComparison.OrdinalIgnoreCase)
+            ? modId
+            : $"{modId} ({name})";
     }
 
     private void MoveSelectedUp()
