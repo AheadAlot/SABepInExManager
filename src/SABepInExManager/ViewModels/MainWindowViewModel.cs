@@ -28,6 +28,8 @@ public class HomePageViewModel : ViewModelBase
     private WorkshopModInfo? _selectedMod;
     private bool _isBepInExInstalled;
     private bool _isRefreshingMods;
+    private bool _isPathRefreshInProgress;
+    private bool _pathRefreshRequested;
     private int _conflictedModCount;
     private DateTimeOffset? _lastScannedAt;
 
@@ -77,6 +79,7 @@ public class HomePageViewModel : ViewModelBase
                 OnPropertyChanged(nameof(DisplayGameRootPath));
                 OnPropertyChanged(nameof(BaselineDirectoryPath));
                 CheckBepInExStatus();
+                QueueRefreshModsAfterPathChanged();
             }
         }
     }
@@ -89,6 +92,7 @@ public class HomePageViewModel : ViewModelBase
             if (SetProperty(ref _workshopContentPath, value))
             {
                 OnPropertyChanged(nameof(DisplayWorkshopContentPath));
+                QueueRefreshModsAfterPathChanged();
             }
         }
     }
@@ -222,6 +226,59 @@ public class HomePageViewModel : ViewModelBase
             GameRootPath = GameRootPath,
             WorkshopContentPath = WorkshopContentPath,
         });
+    }
+
+    public async Task RefreshModsAfterPathChangedAsync()
+    {
+        await SaveConfigAsync();
+
+        if (string.IsNullOrWhiteSpace(GameRootPath)
+            || string.IsNullOrWhiteSpace(WorkshopContentPath)
+            || !Directory.Exists(GameRootPath)
+            || !Directory.Exists(WorkshopContentPath))
+        {
+            return;
+        }
+
+        try
+        {
+            ValidateGameRootForActionsOrThrow();
+        }
+        catch
+        {
+            return;
+        }
+
+        await RefreshModsAsync();
+    }
+
+    private void QueueRefreshModsAfterPathChanged()
+    {
+        _ = RefreshModsAfterPathChangedQueuedAsync();
+    }
+
+    private async Task RefreshModsAfterPathChangedQueuedAsync()
+    {
+        if (_isPathRefreshInProgress)
+        {
+            _pathRefreshRequested = true;
+            return;
+        }
+
+        _isPathRefreshInProgress = true;
+        try
+        {
+            do
+            {
+                _pathRefreshRequested = false;
+                await RefreshModsAfterPathChangedAsync();
+            }
+            while (_pathRefreshRequested);
+        }
+        finally
+        {
+            _isPathRefreshInProgress = false;
+        }
     }
 
     public void CheckBepInExStatus()
