@@ -300,10 +300,25 @@ public class HomePageViewModel : ViewModelBase
 
     private void DetectWorkshopPath()
     {
-        WorkshopContentPath = _workshopService.AutoDetectWorkshopPath(GameRootPath) ?? WorkshopContentPath;
-        AppendLog(string.IsNullOrWhiteSpace(WorkshopContentPath)
-            ? "未自动探测到工坊目录，请手动选择。"
-            : $"已自动探测工坊目录：{WorkshopContentPath}");
+        try
+        {
+            ValidateGameRootForActionsOrThrow();
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"自动探测工坊目录失败：{ex.Message}", reset: true);
+            return;
+        }
+
+        var autoDetectedWorkshopPath = _workshopService.AutoDetectWorkshopPath(GameRootPath);
+        if (string.IsNullOrWhiteSpace(autoDetectedWorkshopPath))
+        {
+            AppendLog("未自动探测到工坊目录，请手动选择。", reset: true);
+            return;
+        }
+
+        WorkshopContentPath = autoDetectedWorkshopPath;
+        AppendLog($"已自动探测工坊目录：{WorkshopContentPath}", reset: true);
     }
 
     private async Task DetectGameRootPathAsync()
