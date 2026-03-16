@@ -99,6 +99,19 @@ public class ModApplyService
         Directory.Delete(snapshotRoot, recursive: true);
     }
 
+    public void DeleteAllBaselineSnapshots(string gameRoot)
+    {
+        EnsureGameRootValid(gameRoot);
+
+        var baselineContainerRoot = GetBaselineContainerRoot(gameRoot);
+        if (!Directory.Exists(baselineContainerRoot))
+        {
+            return;
+        }
+
+        Directory.Delete(baselineContainerRoot, recursive: true);
+    }
+
     public void Apply(
         string gameRoot,
         IReadOnlyList<WorkshopModInfo> enabledMods,

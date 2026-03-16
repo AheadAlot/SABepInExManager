@@ -4,7 +4,7 @@
              x:Class="SABepInExManager.Views.SettingsPageView"
              x:DataType="vm:SettingsPageViewModel">
 
-    <Grid Margin="12" RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" RowSpacing="12">
+    <Grid Margin="12" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
         <TextBlock Text="设置" FontSize="22" FontWeight="Bold"/>
 
         <Border Grid.Row="1" Classes="card">
@@ -41,30 +41,21 @@
         </Border>
 
         <Border Grid.Row="2" Classes="card">
-            <StackPanel Spacing="6">
-                <TextBlock Text="扫描设置" FontWeight="SemiBold"/>
-                <TextBlock Text="启动时自动扫描、递归扫描、忽略临时文件（占位）。" Classes="secondary-text"/>
-            </StackPanel>
-        </Border>
-
-        <Border Grid.Row="3" Classes="card">
-            <StackPanel Spacing="6">
-                <TextBlock Text="备份设置" FontWeight="SemiBold"/>
-                <TextBlock Text="自动备份、保留数量、命名规则（占位）。" Classes="secondary-text"/>
-            </StackPanel>
-        </Border>
-
-        <Border Grid.Row="4" Classes="card">
-            <StackPanel Spacing="6">
-                <TextBlock Text="界面设置" FontWeight="SemiBold"/>
-                <TextBlock Text="主题、列表密度、字体缩放、日志级别（占位）。" Classes="secondary-text"/>
-            </StackPanel>
-        </Border>
-
-        <Border Grid.Row="5" Classes="card">
-            <StackPanel Spacing="6">
+            <StackPanel Spacing="10">
                 <TextBlock Text="高级设置" FontWeight="SemiBold"/>
-                <TextBlock Text="启动参数、自定义插件目录、调试模式（占位）。" Classes="secondary-text"/>
+                <TextBlock Text="以下操作会直接修改本地数据，请谨慎操作。" Classes="secondary-text"/>
+                <StackPanel Orientation="Vertical" Spacing="8">
+                    <Button Classes="action-button danger-action"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Content="删除所有备份"
+                            Click="OnDeleteAllBackupsClicked"/>
+                    <Button Classes="action-button secondary-action"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Content="清空模组版本缓存"
+                            Click="OnClearModVersionCacheClicked"/>
+                </StackPanel>
             </StackPanel>
         </Border>
     </Grid>

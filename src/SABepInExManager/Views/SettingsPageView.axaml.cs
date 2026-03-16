@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
+using SABepInExManager.Services;
 using SABepInExManager.ViewModels;
 using System.Linq;
 
@@ -7,6 +8,8 @@ namespace SABepInExManager.Views;
 
 public partial class SettingsPageView : UserControl
 {
+    private readonly DialogService _dialogService = new();
+
     public SettingsPageView()
     {
         InitializeComponent();
@@ -62,6 +65,48 @@ public partial class SettingsPageView : UserControl
         {
             vm.HomePage.WorkshopContentPath = folder.Path.LocalPath;
         }
+    }
+
+    private async void OnDeleteAllBackupsClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (DataContext is not SettingsPageViewModel vm)
+        {
+            return;
+        }
+
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner is null)
+        {
+            return;
+        }
+
+        var confirmed = await _dialogService.ShowConfirmAsync(
+            owner,
+            new ConfirmDialogOptions
+            {
+                Title = "确认删除所有备份",
+                Message = "将永久删除当前游戏目录下的所有备份快照。该操作不可撤销，是否继续？",
+                ConfirmText = "确认删除",
+                IsDangerous = true,
+                WarningHint = "删除后无法恢复，请先确认已有外部备份。"
+            });
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        await vm.HomePage.DeleteAllBaselineSnapshotsAsync();
+    }
+
+    private async void OnClearModVersionCacheClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (DataContext is not SettingsPageViewModel vm)
+        {
+            return;
+        }
+
+        await vm.HomePage.ClearModVersionCacheAsync();
     }
 }
 

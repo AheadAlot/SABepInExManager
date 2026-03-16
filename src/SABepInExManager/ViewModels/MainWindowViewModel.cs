@@ -512,6 +512,47 @@ public class HomePageViewModel : ViewModelBase
         await SaveConfigAsync();
     }
 
+    public async Task DeleteAllBaselineSnapshotsAsync()
+    {
+        try
+        {
+            ValidateGameRootForActionsOrThrow();
+            _modApplyService.DeleteAllBaselineSnapshots(GameRootPath);
+            AppendLog("已删除所有备份。", reset: true);
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"删除所有备份失败：{ex.Message}", reset: true);
+        }
+
+        await SaveConfigAsync();
+    }
+
+    public async Task ClearModVersionCacheAsync()
+    {
+        try
+        {
+            ValidateGameRootOrThrow();
+
+            var existingState = _modApplyService.LoadState(GameRootPath);
+            if (existingState is null)
+            {
+                AppendLog("未找到可清理的模组版本缓存。", reset: true);
+                return;
+            }
+
+            existingState.AppliedModSignatures = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            _modApplyService.SaveState(GameRootPath, existingState);
+            AppendLog("已清空模组版本缓存。", reset: true);
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"清空模组版本缓存失败：{ex.Message}", reset: true);
+        }
+
+        await SaveConfigAsync();
+    }
+
     private void PreviewConflicts()
     {
         ConflictPreviewItems.Clear();

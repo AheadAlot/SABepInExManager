@@ -14,7 +14,8 @@ namespace SABepInExManager.AutoUpdater.Services;
 
 public class AutoUpdaterSyncService
 {
-    private const string AutoUpdaterStateFolder = "SABepInExManager.AutoUpdater";
+    private const string AutoUpdaterStateDbFolder = "SABepInExManager_AutoUpdater";
+    private const string LegacyAutoUpdaterStateFolder = "SABepInExManager.AutoUpdater";
     private const string AutoUpdaterStateDbFileName = "state.db";
     private const string LegacyAutoUpdaterStateJsonFileName = "state.json";
     private const string BackupSuffix = ".bak";
@@ -203,10 +204,10 @@ public class AutoUpdaterSyncService
         => Path.Combine(gameRoot, PathConstants.StateRootFolder, PathConstants.StateFileName);
 
     private static string GetAutoUpdaterStateDbPath(string gameRoot)
-        => Path.Combine(gameRoot, "BepInEx", "config", AutoUpdaterStateFolder, AutoUpdaterStateDbFileName);
+        => Path.Combine(gameRoot, "BepInEx", "patchers", AutoUpdaterStateDbFolder, AutoUpdaterStateDbFileName);
 
     private static string GetLegacyAutoUpdaterStateJsonPath(string gameRoot)
-        => Path.Combine(gameRoot, "BepInEx", "config", AutoUpdaterStateFolder, LegacyAutoUpdaterStateJsonFileName);
+        => Path.Combine(gameRoot, "BepInEx", "config", LegacyAutoUpdaterStateFolder, LegacyAutoUpdaterStateJsonFileName);
 
     private AppStateLite? LoadAppState(string gameRoot)
     {
