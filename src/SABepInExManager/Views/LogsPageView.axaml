@@ -4,30 +4,34 @@
              x:Class="SABepInExManager.Views.LogsPageView"
              x:DataType="vm:LogsPageViewModel">
 
-    <Grid Margin="12" RowDefinitions="Auto,Auto,*" RowSpacing="12">
+    <Grid Margin="12" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
         <TextBlock Text="日志" FontSize="22" FontWeight="Bold"/>
 
-        <Border Grid.Row="1" Classes="card">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Classes="action-button secondary-action"
-                        Content="清空日志"
-                        Command="{Binding HomePage.ClearLogsCommand}"/>
-                <TextBlock Text="后续可扩展级别筛选、关键词搜索、导出。" Classes="secondary-text" VerticalAlignment="Center"/>
-            </StackPanel>
-        </Border>
+        <TextBlock Grid.Row="1"
+                   Text="日志会记录管理器中的关键操作与提示信息，便于排查问题和确认执行结果。清空日志不会影响已安装模组与配置。"
+                   Classes="secondary-text"
+                   TextWrapping="Wrap"/>
 
-        <Border Grid.Row="2" Classes="card">
-            <ListBox ItemsSource="{Binding HomePage.Logs}">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                            <TextBlock Text="{Binding TimestampText}" Classes="secondary-text"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Message}" TextWrapping="Wrap"/>
-                        </Grid>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-        </Border>
+        <Button Grid.Row="2"
+                Classes="action-button primary-action"
+                Content="清空日志"
+                Command="{Binding HomePage.ClearLogsCommand}"
+                BorderThickness="0"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
+                MinHeight="44"/>
+
+        <ListBox Grid.Row="3" ItemsSource="{Binding HomePage.Logs}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                        <TextBlock Text="{Binding TimestampText}" Classes="secondary-text"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Message}" TextWrapping="Wrap"/>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
     </Grid>
 </UserControl>
 
