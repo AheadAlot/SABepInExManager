@@ -403,6 +403,43 @@ public class HomePageViewModel : ViewModelBase
         await SaveConfigAsync();
     }
 
+    public async Task RestoreBaselineSnapshotAsync(string snapshotFolderName)
+    {
+        try
+        {
+            ValidateGameRootForActionsOrThrow();
+            if (!EnsureBepInExInstalledForAction("恢复备份"))
+            {
+                return;
+            }
+
+            _modApplyService.RestoreBaseline(GameRootPath, snapshotFolderName);
+            AppendLog($"已恢复备份：{snapshotFolderName}", reset: true);
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"恢复备份失败：{ex.Message}", reset: true);
+        }
+
+        await SaveConfigAsync();
+    }
+
+    public async Task DeleteBaselineSnapshotAsync(string snapshotFolderName)
+    {
+        try
+        {
+            ValidateGameRootForActionsOrThrow();
+            _modApplyService.DeleteBaselineSnapshot(GameRootPath, snapshotFolderName);
+            AppendLog($"已删除备份：{snapshotFolderName}", reset: true);
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"删除备份失败：{ex.Message}", reset: true);
+        }
+
+        await SaveConfigAsync();
+    }
+
     private void PreviewConflicts()
     {
         ConflictPreviewItems.Clear();

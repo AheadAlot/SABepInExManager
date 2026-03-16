@@ -12,21 +12,52 @@
                    Classes="secondary-text"
                    TextWrapping="Wrap"/>
 
-        <Border Grid.Row="2" Classes="card">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Classes="action-button secondary-action"
-                        Content="创建备份"
-                        IsEnabled="{Binding HomePage.IsBepInExInstalled}"
-                        Command="{Binding HomePage.CreateBaselineCommand}"/>
-                <Button Classes="action-button warning-action"
-                        Content="恢复备份"
-                        IsEnabled="{Binding HomePage.IsBepInExInstalled}"
-                        Command="{Binding HomePage.RestoreBaselineCommand}"/>
-            </StackPanel>
-        </Border>
+        <Button Grid.Row="2"
+                Classes="action-button primary-action"
+                Content="创建备份"
+                IsEnabled="{Binding HomePage.IsBepInExInstalled}"
+                Command="{Binding HomePage.CreateBaselineCommand}"
+                BorderThickness="0"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
+                MinHeight="44"/>
 
         <Border Grid.Row="3" Classes="card">
-            <TextBlock Text="后续可在此加入备份列表、快照详情、恢复预览。" Classes="secondary-text"/>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="暂无备份快照。" Classes="secondary-text" IsVisible="{Binding ShowEmptyState}"/>
+
+                    <ItemsControl ItemsSource="{Binding Snapshots}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:BackupSnapshotItemViewModel">
+                                <Border Classes="card" Padding="10" Margin="0,0,0,8">
+                                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="{Binding FolderName, StringFormat=备份目录：{0}}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding CreatedAtText, StringFormat=创建时间：{0}}" Classes="secondary-text"/>
+                                            <TextBlock Text="{Binding FileCount, StringFormat=文件数量：{0}}" Classes="secondary-text"/>
+                                            <TextBlock Text="{Binding SizeText, StringFormat=备份大小：{0}}" Classes="secondary-text"/>
+                                        </StackPanel>
+
+                                        <Button Grid.Column="1"
+                                                Classes="action-button danger-action"
+                                                Content="删除备份"
+                                                Tag="{Binding FolderName}"
+                                                Click="OnDeleteSnapshotClicked"/>
+
+                                        <Button Grid.Column="2"
+                                                Classes="action-button primary-action"
+                                                Content="恢复备份"
+                                                Tag="{Binding FolderName}"
+                                                Click="OnRestoreSnapshotClicked"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
         </Border>
     </Grid>
 </UserControl>

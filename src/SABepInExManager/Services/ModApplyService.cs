@@ -45,10 +45,10 @@ public class ModApplyService
         }
     }
 
-    public void RestoreBaseline(string gameRoot)
+    public void RestoreBaseline(string gameRoot, string? snapshotFolderName = null)
     {
         EnsureGameRootValid(gameRoot);
-        var baselineRoot = GetLatestBaselineRoot(gameRoot);
+        var baselineRoot = ResolveBaselineRootForRestore(gameRoot, snapshotFolderName);
         if (string.IsNullOrWhiteSpace(baselineRoot) || !Directory.Exists(baselineRoot))
         {
             throw new InvalidOperationException("未找到备份，请先创建备份。");
@@ -79,6 +79,24 @@ public class ModApplyService
         }
 
         RestorePreservedPluginDirectories(gameRoot, preservedPlugins);
+    }
+
+    public void DeleteBaselineSnapshot(string gameRoot, string snapshotFolderName)
+    {
+        EnsureGameRootValid(gameRoot);
+        if (string.IsNullOrWhiteSpace(snapshotFolderName))
+        {
+            throw new InvalidOperationException("备份目录名称无效。");
+        }
+
+        var baselineContainerRoot = GetBaselineContainerRoot(gameRoot);
+        var snapshotRoot = Path.Combine(baselineContainerRoot, snapshotFolderName);
+        if (!Directory.Exists(snapshotRoot))
+        {
+            throw new InvalidOperationException("备份目录不存在。 ");
+        }
+
+        Directory.Delete(snapshotRoot, recursive: true);
     }
 
     public void Apply(
@@ -168,6 +186,16 @@ public class ModApplyService
 
     private static string GetBaselineContainerRoot(string gameRoot)
         => Path.Combine(GetStateRoot(gameRoot), PathConstants.BaselineFolder);
+
+    private static string? ResolveBaselineRootForRestore(string gameRoot, string? snapshotFolderName)
+    {
+        if (string.IsNullOrWhiteSpace(snapshotFolderName))
+        {
+            return GetLatestBaselineRoot(gameRoot);
+        }
+
+        return Path.Combine(GetBaselineContainerRoot(gameRoot), snapshotFolderName);
+    }
 
     private static string? GetLatestBaselineRoot(string gameRoot)
     {
