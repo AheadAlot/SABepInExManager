@@ -8,14 +8,34 @@
         <TextBlock Text="设置" FontSize="22" FontWeight="Bold"/>
 
         <Border Grid.Row="1" Classes="card">
-            <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
                 <TextBlock Text="路径设置" FontSize="16" FontWeight="Bold"/>
-                <Grid Grid.Row="1" RowDefinitions="Auto,Auto" RowSpacing="8">
-                    <TextBox Watermark="游戏根目录"
+                <TextBlock Grid.Row="1" Text="游戏根目录" FontWeight="SemiBold"/>
+                <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBox Watermark="例如: D:\SteamLibrary\steamapps\common\StudentAge"
                              Text="{Binding HomePage.GameRootPath}"/>
-                    <TextBox Grid.Row="1"
-                             Watermark="创意工坊路径"
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                        <Button Classes="action-button secondary-action"
+                                Content="选择文件夹"
+                                Click="OnPickGameRootFolderClicked"/>
+                        <Button Classes="action-button primary-action"
+                                Content="自动探测"
+                                Command="{Binding HomePage.DetectGameRootPathCommand}"/>
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Grid.Row="3" Text="创意工坊路径" FontWeight="SemiBold"/>
+                <Grid Grid.Row="4" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBox Watermark="例如: D:\SteamLibrary\steamapps\workshop\content\1991040"
                              Text="{Binding HomePage.WorkshopContentPath}"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                        <Button Classes="action-button secondary-action"
+                                Content="选择文件夹"
+                                Click="OnPickWorkshopFolderClicked"/>
+                        <Button Classes="action-button primary-action"
+                                Content="自动探测"
+                                Command="{Binding HomePage.DetectWorkshopPathCommand}"/>
+                    </StackPanel>
                 </Grid>
             </Grid>
         </Border>
