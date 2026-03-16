@@ -59,87 +59,68 @@
 
     <Grid Margin="12" RowDefinitions="*" RowSpacing="12">
         <Grid ColumnDefinitions="380,*" ColumnSpacing="12">
-            <Border Classes="card">
-                <Grid RowDefinitions="Auto,*" RowSpacing="8">
-                    <TextBlock Text="Mod 列表" FontSize="16" FontWeight="Bold"/>
-                    <ListBox x:Name="ModsListBox"
-                             Grid.Row="1"
-                             Classes="ModsDragAndDrop"
-                             ItemsSource="{Binding HomePage.Mods}"
-                             SelectedItem="{Binding HomePage.SelectedMod}"
-                             DoubleTapped="OnModsListDoubleTapped">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*" ColumnSpacing="8" RowSpacing="2">
-                                    <CheckBox Grid.RowSpan="2"
-                                              ClickMode="Press"
-                                              IsChecked="{Binding IsEnabled}"
-                                              VerticalAlignment="Top"
-                                              Margin="0,1,0,0"/>
-                                    <Border Grid.Column="1"
-                                            Grid.RowSpan="2"
-                                            Classes="mod-drag-handle"
-                                            Background="Transparent">
-                                        <Grid RowDefinitions="Auto,Auto" RowSpacing="2">
-                                            <TextBlock Text="{Binding DisplayName}"
-                                                       FontWeight="SemiBold"
-                                                       TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Grid.Row="1"
-                                                       Text="{Binding ModId, StringFormat=ID: {0}}"
-                                                       Classes="secondary-text"
-                                                       TextTrimming="CharacterEllipsis"/>
-                                        </Grid>
-                                    </Border>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Grid>
-            </Border>
+            <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                <TextBlock Text="Mod 列表" FontSize="16" FontWeight="Bold"/>
+                <ListBox x:Name="ModsListBox"
+                         Grid.Row="1"
+                         Classes="ModsDragAndDrop"
+                         ItemsSource="{Binding HomePage.Mods}"
+                         SelectedItem="{Binding HomePage.SelectedMod}"
+                         DoubleTapped="OnModsListDoubleTapped">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*" ColumnSpacing="8" RowSpacing="2">
+                                <CheckBox Grid.RowSpan="2"
+                                          ClickMode="Press"
+                                          IsChecked="{Binding IsEnabled}"
+                                          VerticalAlignment="Top"
+                                          Margin="0,1,0,0"/>
+                                <Border Grid.Column="1"
+                                        Grid.RowSpan="2"
+                                        Classes="mod-drag-handle"
+                                        Background="Transparent">
+                                    <Grid RowDefinitions="Auto,Auto" RowSpacing="2">
+                                        <TextBlock Text="{Binding DisplayName}"
+                                                   FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Row="1"
+                                                   Text="{Binding ModId, StringFormat=ID: {0}}"
+                                                   Classes="secondary-text"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
 
-            <Border Grid.Column="1" Classes="card">
-                <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="10">
-                    <TextBlock Text="Mod 详情" FontSize="16" FontWeight="Bold"/>
+            <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" RowSpacing="10">
+                <TextBlock Text="Mod 详情" FontSize="16" FontWeight="Bold"/>
 
-                    <Border Grid.Row="1" Classes="card" Padding="10">
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="基本信息" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding HomePage.SelectedMod.DisplayName, FallbackValue=未选择 Mod}" FontSize="16" FontWeight="Bold"/>
-                            <TextBlock Text="{Binding HomePage.SelectedMod.ModId, StringFormat=ID: {0}}" Classes="secondary-text"/>
-                        </StackPanel>
-                    </Border>
-
-                    <Border Grid.Row="2" Classes="card" Padding="10">
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="文件与路径" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding HomePage.SelectedMod.ModRootPath, StringFormat=目录: {0}}"
-                                       Classes="secondary-text"
-                                       TextWrapping="Wrap"/>
-                        </StackPanel>
-                    </Border>
-
-                    <Border Grid.Row="3" Classes="card" Padding="10">
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="冲突与描述" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding HomePage.SelectedMod.Description}" TextWrapping="Wrap"/>
-                        </StackPanel>
-                    </Border>
-
-                    <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="8">
-                        <Button Classes="action-button primary-action"
-                                Content="冲突预览"
-                                IsEnabled="{Binding HomePage.IsBepInExInstalled}"
-                                Command="{Binding HomePage.PreviewConflictsCommand}"/>
-                        <Button Classes="action-button secondary-action"
-                                Content="创建/更新备份"
-                                IsEnabled="{Binding HomePage.IsBepInExInstalled}"
-                                Command="{Binding HomePage.CreateBaselineCommand}"/>
-                        <Button Classes="action-button secondary-action"
-                                Content="打开目录"
-                                Command="{Binding HomePage.OpenSelectedModFolderCommand}"/>
+                <Border Grid.Row="1" Classes="card" Padding="10">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="基本信息" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding HomePage.SelectedMod.DisplayName, FallbackValue=未选择 Mod}" FontSize="16" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding HomePage.SelectedMod.ModId, StringFormat=ID: {0}}" Classes="secondary-text"/>
+                        <TextBlock Text="{Binding HomePage.SelectedMod.ModRootPath, StringFormat=目录: {0}}"
+                                   Classes="secondary-text"
+                                   TextWrapping="Wrap"/>
                     </StackPanel>
-                </Grid>
-            </Border>
+                </Border>
+
+                <Border Grid.Row="2" Classes="card" Padding="10">
+                    <Grid RowDefinitions="Auto,*" RowSpacing="6">
+                        <TextBlock Text="描述信息" FontWeight="SemiBold"/>
+                        <ScrollViewer Grid.Row="1"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <TextBlock Text="{Binding HomePage.SelectedMod.Description}"
+                                       TextWrapping="Wrap"/>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
         </Grid>
     </Grid>
 </UserControl>

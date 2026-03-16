@@ -19,7 +19,7 @@
 
         <Border Grid.Row="1" Classes="card">
             <Grid RowDefinitions="Auto,Auto" RowSpacing="10">
-                <TextBlock Text="总揽" FontSize="16" FontWeight="Bold"/>
+                <TextBlock Text="总览" FontSize="16" FontWeight="Bold"/>
                 <Grid Grid.Row="1" ColumnDefinitions="*,*,*" ColumnSpacing="10">
                     <Border Classes="stat-card">
                         <StackPanel Spacing="4">

@@ -143,7 +143,7 @@ public class HomePageViewModel : ViewModelBase
                 return $"BepInEx 已安装，检测到 {ConflictedModCount} 个冲突路径";
             }
 
-            return "BepInEx 已安装，环境正常";
+            return "BepInEx 已安装";
         }
     }
 
