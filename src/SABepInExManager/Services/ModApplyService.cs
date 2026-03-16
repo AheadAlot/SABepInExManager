@@ -114,8 +114,7 @@ public class ModApplyService
 
     public void Apply(
         string gameRoot,
-        IReadOnlyList<WorkshopModInfo> enabledMods,
-        IReadOnlyDictionary<string, string>? appliedModSignatures = null)
+        IReadOnlyList<WorkshopModInfo> enabledMods)
     {
         EnsureGameRootValid(gameRoot);
 
@@ -160,15 +159,13 @@ public class ModApplyService
         SaveState(gameRoot, new AppState
         {
             EnabledModIds = enabledMods.Select(x => x.ModId).ToList(),
-            LastAppliedAt = DateTimeOffset.Now,
-            AppliedModSignatures = appliedModSignatures is null
-                ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-                : new Dictionary<string, string>(appliedModSignatures, StringComparer.OrdinalIgnoreCase),
         });
     }
 
     public AppState? LoadState(string gameRoot)
     {
+        MigrateLegacyStateIfNeeded(gameRoot);
+
         var file = GetStateFile(gameRoot);
         if (!File.Exists(file))
         {
@@ -188,6 +185,8 @@ public class ModApplyService
 
     public void SaveState(string gameRoot, AppState state)
     {
+        MigrateLegacyStateIfNeeded(gameRoot);
+
         var file = GetStateFile(gameRoot);
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
         var json = JsonSerializer.Serialize(state, JsonOptions);
@@ -195,10 +194,13 @@ public class ModApplyService
     }
 
     private static string GetStateRoot(string gameRoot)
+        => Path.Combine(AppContext.BaseDirectory, PathConstants.ManagerStateFolder);
+
+    private static string GetLegacyStateRoot(string gameRoot)
         => Path.Combine(gameRoot, PathConstants.StateRootFolder);
 
     private static string GetBaselineContainerRoot(string gameRoot)
-        => Path.Combine(GetStateRoot(gameRoot), PathConstants.BaselineFolder);
+        => Path.Combine(GetLegacyStateRoot(gameRoot), PathConstants.BaselineFolder);
 
     private static string? ResolveBaselineRootForRestore(string gameRoot, string? snapshotFolderName)
     {
@@ -248,6 +250,29 @@ public class ModApplyService
 
     private static string GetStateFile(string gameRoot)
         => Path.Combine(GetStateRoot(gameRoot), PathConstants.StateFileName);
+
+    private static string GetLegacyStateFile(string gameRoot)
+        => Path.Combine(GetLegacyStateRoot(gameRoot), PathConstants.StateFileName);
+
+    private static void MigrateLegacyStateIfNeeded(string gameRoot)
+    {
+        if (string.IsNullOrWhiteSpace(gameRoot) || !Directory.Exists(gameRoot))
+        {
+            return;
+        }
+
+        var legacyRoot = GetLegacyStateRoot(gameRoot);
+        var legacyStateFile = GetLegacyStateFile(gameRoot);
+        if (!Directory.Exists(legacyRoot) || !File.Exists(legacyStateFile))
+        {
+            return;
+        }
+
+        var stateFile = GetStateFile(gameRoot);
+        Directory.CreateDirectory(Path.GetDirectoryName(stateFile)!);
+        File.Copy(legacyStateFile, stateFile, overwrite: true);
+        Directory.Delete(legacyRoot, recursive: true);
+    }
 
     private static void EnsureGameRootValid(string gameRoot)
     {

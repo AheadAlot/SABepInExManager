@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 
 namespace SABepInExManager.Models;
@@ -6,9 +5,7 @@ namespace SABepInExManager.Models;
 public class AppState
 {
     public List<string> EnabledModIds { get; set; } = new();
-    public DateTimeOffset LastAppliedAt { get; set; }
     public string? WorkshopContentPath { get; set; }
-    public Dictionary<string, string> AppliedModSignatures { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 public class ConflictItem

@@ -8,6 +8,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
+using SABepInExManager.Core.Models;
+using SABepInExManager.Core.Services;
 using SABepInExManager.Models;
 using SABepInExManager.Services;
 
@@ -16,12 +18,15 @@ namespace SABepInExManager.ViewModels;
 public class HomePageViewModel : ViewModelBase
 {
     private const int MaxLogEntries = 5000;
+    private const string AutoUpdaterStateDbFolder = "SABepInExManager_AutoUpdater";
+    private const string AutoUpdaterStateDbFileName = "state.db";
 
     private readonly ConfigService _configService = new();
     private readonly WorkshopService _workshopService = new();
     private readonly ModApplyService _modApplyService = new();
     private readonly BepInExService _bepInExService = new();
     private readonly SteamLocatorService _steamLocatorService = new();
+    private readonly AutoUpdaterSqliteStateStore _autoUpdaterStateStore = new();
 
     private string _gameRootPath = string.Empty;
     private string _workshopContentPath = string.Empty;
@@ -534,15 +539,20 @@ public class HomePageViewModel : ViewModelBase
         {
             ValidateGameRootOrThrow();
 
-            var existingState = _modApplyService.LoadState(GameRootPath);
-            if (existingState is null)
-            {
-                AppendLog("未找到可清理的模组版本缓存。", reset: true);
-                return;
-            }
+            var autoUpdaterDbPath = Path.Combine(
+                GameRootPath,
+                "BepInEx",
+                "patchers",
+                AutoUpdaterStateDbFolder,
+                AutoUpdaterStateDbFileName);
 
-            existingState.AppliedModSignatures = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            _modApplyService.SaveState(GameRootPath, existingState);
+            _autoUpdaterStateStore.Save(autoUpdaterDbPath, new AutoUpdaterSyncState
+            {
+                AppId = PathConstants.WorkshopAppId,
+                LastRunAt = DateTimeOffset.MinValue,
+                Mods = new Dictionary<string, AutoUpdaterModState>(StringComparer.OrdinalIgnoreCase),
+            });
+
             AppendLog("已清空模组版本缓存。", reset: true);
         }
         catch (Exception ex)

@@ -48,13 +48,18 @@
                     <Button Classes="action-button danger-action"
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Center"
-                            Content="删除所有备份"
-                            Click="OnDeleteAllBackupsClicked"/>
+                            Content="重新安装BepInEx"
+                            Click="OnReinstallBepInExClicked"/>
                     <Button Classes="action-button secondary-action"
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Center"
                             Content="清空模组版本缓存"
                             Click="OnClearModVersionCacheClicked"/>
+                    <Button Classes="action-button danger-action"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Content="删除所有备份"
+                            Click="OnDeleteAllBackupsClicked"/>
                 </StackPanel>
             </StackPanel>
         </Border>

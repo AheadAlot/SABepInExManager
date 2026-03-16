@@ -201,7 +201,7 @@ public class AutoUpdaterSyncService
     }
 
     private static string GetGuiStatePath(string gameRoot)
-        => Path.Combine(gameRoot, PathConstants.StateRootFolder, PathConstants.StateFileName);
+        => Path.Combine(AppContext.BaseDirectory, PathConstants.ManagerStateFolder, PathConstants.StateFileName);
 
     private static string GetAutoUpdaterStateDbPath(string gameRoot)
         => Path.Combine(gameRoot, "BepInEx", "patchers", AutoUpdaterStateDbFolder, AutoUpdaterStateDbFileName);

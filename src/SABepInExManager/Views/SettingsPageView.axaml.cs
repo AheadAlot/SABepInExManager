@@ -99,6 +99,38 @@ public partial class SettingsPageView : UserControl
         await vm.HomePage.DeleteAllBaselineSnapshotsAsync();
     }
 
+    private async void OnReinstallBepInExClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (DataContext is not SettingsPageViewModel vm)
+        {
+            return;
+        }
+
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner is null)
+        {
+            return;
+        }
+
+        var confirmed = await _dialogService.ShowConfirmAsync(
+            owner,
+            new ConfirmDialogOptions
+            {
+                Title = "确认重装 BepInEx",
+                Message = "将删除当前游戏目录中的 BepInEx 相关目录和文件，然后重新安装。该操作存在风险，是否继续？",
+                ConfirmText = "确认重装",
+                IsDangerous = true,
+                WarningHint = "将移除 BepInEx 目录及 doorstop_config.ini、winhttp.dll 等文件。"
+            });
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        await vm.HomePage.ReinstallBepInExAsync();
+    }
+
     private async void OnClearModVersionCacheClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (DataContext is not SettingsPageViewModel vm)
