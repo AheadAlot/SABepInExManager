@@ -101,6 +101,30 @@
         <Setter Property="BorderBrush" Value="#86EFAC"/>
     </Style>
 
+    <Style Selector="Border.stat-card">
+        <Setter Property="Background" Value="#F8FAFC"/>
+        <Setter Property="BorderBrush" Value="#E2E8F0"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="10,8"/>
+    </Style>
+
+    <Style Selector="TextBlock.stat-value">
+        <Setter Property="FontSize" Value="22"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="#0F172A"/>
+    </Style>
+
+    <Style Selector="TextBlock.stat-value-small">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="#0F172A"/>
+    </Style>
+
+    <Style Selector="Grid.kv-row">
+        <Setter Property="ColumnSpacing" Value="12"/>
+    </Style>
+
     <Style Selector="ListBox.nav-list ListBoxItem">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="CornerRadius" Value="0"/>

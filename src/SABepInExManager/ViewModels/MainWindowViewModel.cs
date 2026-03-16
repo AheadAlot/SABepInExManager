@@ -29,6 +29,7 @@ public class HomePageViewModel : ViewModelBase
     private bool _isBepInExInstalled;
     private bool _isRefreshingMods;
     private int _conflictedModCount;
+    private DateTimeOffset? _lastScannedAt;
 
     public HomePageViewModel()
     {
@@ -72,6 +73,8 @@ public class HomePageViewModel : ViewModelBase
         {
             if (SetProperty(ref _gameRootPath, value))
             {
+                OnPropertyChanged(nameof(DisplayGameRootPath));
+                OnPropertyChanged(nameof(BaselineDirectoryPath));
                 CheckBepInExStatus();
             }
         }
@@ -80,7 +83,13 @@ public class HomePageViewModel : ViewModelBase
     public string WorkshopContentPath
     {
         get => _workshopContentPath;
-        set => SetProperty(ref _workshopContentPath, value);
+        set
+        {
+            if (SetProperty(ref _workshopContentPath, value))
+            {
+                OnPropertyChanged(nameof(DisplayWorkshopContentPath));
+            }
+        }
     }
 
     public WorkshopModInfo? SelectedMod
@@ -92,18 +101,83 @@ public class HomePageViewModel : ViewModelBase
     public bool IsBepInExInstalled
     {
         get => _isBepInExInstalled;
-        private set => SetProperty(ref _isBepInExInstalled, value);
+        private set
+        {
+            if (!SetProperty(ref _isBepInExInstalled, value))
+            {
+                return;
+            }
+
+            OnPropertyChanged(nameof(BepInExStatusText));
+            OnPropertyChanged(nameof(InstallBepInExButtonText));
+            NotifyDashboardStatusChanged();
+        }
     }
 
     public string BepInExStatusText => IsBepInExInstalled ? "已安装" : "未安装";
+    public string EnvironmentAvailabilityText => IsBepInExInstalled ? "可用" : "不可用";
     public string InstallBepInExButtonText => IsBepInExInstalled ? "重装" : "安装";
     public string LatestLogMessage => Logs.Count > 0 ? Logs[^1].Message : "就绪。";
     public int ManagedModCount => Mods.Count;
     public int EnabledModCount => Mods.Count(m => m.IsEnabled);
+    public int DisabledModCount => Math.Max(0, ManagedModCount - EnabledModCount);
+    public bool HasConflicts => ConflictedModCount > 0;
+    public string LastScanTimeText => _lastScannedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "未扫描";
+    public string DisplayGameRootPath => string.IsNullOrWhiteSpace(GameRootPath) ? "未配置" : GameRootPath;
+    public string DisplayWorkshopContentPath => string.IsNullOrWhiteSpace(WorkshopContentPath) ? "未配置" : WorkshopContentPath;
+    public string BaselineDirectoryPath => string.IsNullOrWhiteSpace(GameRootPath)
+        ? "未配置"
+        : Path.Combine(GameRootPath, PathConstants.StateRootFolder, PathConstants.BaselineFolder);
+    public string CurrentConfigName => "默认配置";
+    public string DashboardPrimaryStatusText
+    {
+        get
+        {
+            if (!IsBepInExInstalled)
+            {
+                return "BepInEx 未安装，当前环境不可用";
+            }
+
+            if (HasConflicts)
+            {
+                return $"BepInEx 已安装，检测到 {ConflictedModCount} 个冲突路径";
+            }
+
+            return "BepInEx 已安装，环境正常";
+        }
+    }
+
+    public string DashboardSecondaryStatusText
+    {
+        get
+        {
+            if (!IsBepInExInstalled)
+            {
+                return "请先安装或修复 BepInEx，随后重新扫描 Mod。";
+            }
+
+            if (HasConflicts)
+            {
+                return $"已检测 {ManagedModCount} 个 Mod，其中 {EnabledModCount} 个已启用。当前存在冲突，建议先处理。";
+            }
+
+            return $"已检测 {ManagedModCount} 个 Mod，其中 {EnabledModCount} 个已启用，未发现异常。";
+        }
+    }
+
     public int ConflictedModCount
     {
         get => _conflictedModCount;
-        private set => SetProperty(ref _conflictedModCount, value);
+        private set
+        {
+            if (!SetProperty(ref _conflictedModCount, value))
+            {
+                return;
+            }
+
+            OnPropertyChanged(nameof(HasConflicts));
+            NotifyDashboardStatusChanged();
+        }
     }
 
     public IAsyncRelayCommand RefreshModsCommand { get; }
@@ -152,8 +226,6 @@ public class HomePageViewModel : ViewModelBase
     public void CheckBepInExStatus()
     {
         IsBepInExInstalled = _bepInExService.IsInstalled(GameRootPath);
-        OnPropertyChanged(nameof(BepInExStatusText));
-        OnPropertyChanged(nameof(InstallBepInExButtonText));
     }
 
     private bool EnsureBepInExInstalledForAction(string actionName)
@@ -217,6 +289,8 @@ public class HomePageViewModel : ViewModelBase
         }
 
         SelectedMod = Mods.FirstOrDefault();
+        _lastScannedAt = DateTimeOffset.Now;
+        OnPropertyChanged(nameof(LastScanTimeText));
         AppendLog($"扫描完成：找到 {Mods.Count} 个可管理 mod。", reset: true);
         UpdateModSummary();
         PersistEnabledState();
@@ -418,6 +492,7 @@ public class HomePageViewModel : ViewModelBase
 
         OnPropertyChanged(nameof(ManagedModCount));
         OnPropertyChanged(nameof(EnabledModCount));
+        OnPropertyChanged(nameof(DisabledModCount));
         UpdateModSummary();
         PersistEnabledState();
     }
@@ -435,6 +510,7 @@ public class HomePageViewModel : ViewModelBase
         }
 
         OnPropertyChanged(nameof(EnabledModCount));
+        OnPropertyChanged(nameof(DisabledModCount));
         UpdateModSummary();
         PersistEnabledState();
     }
@@ -617,6 +693,7 @@ public class HomePageViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(ManagedModCount));
         OnPropertyChanged(nameof(EnabledModCount));
+        OnPropertyChanged(nameof(DisabledModCount));
 
         try
         {
@@ -626,6 +703,16 @@ public class HomePageViewModel : ViewModelBase
         {
             ConflictedModCount = 0;
         }
+
+        NotifyDashboardStatusChanged();
+    }
+
+    private void NotifyDashboardStatusChanged()
+    {
+        OnPropertyChanged(nameof(BepInExStatusText));
+        OnPropertyChanged(nameof(EnvironmentAvailabilityText));
+        OnPropertyChanged(nameof(DashboardPrimaryStatusText));
+        OnPropertyChanged(nameof(DashboardSecondaryStatusText));
     }
 }
 
