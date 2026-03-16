@@ -4,10 +4,15 @@
              x:Class="SABepInExManager.Views.BackupPageView"
              x:DataType="vm:BackupPageViewModel">
 
-    <Grid Margin="12" RowDefinitions="Auto,Auto,*" RowSpacing="12">
+    <Grid Margin="12" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
         <TextBlock Text="备份与恢复" FontSize="22" FontWeight="Bold"/>
 
-        <Border Grid.Row="1" Classes="card">
+        <TextBlock Grid.Row="1"
+                   Text="备份会保存当前游戏目录下被 Mod 管理器接管的文件状态，恢复时将回滚到最近一次备份。建议在大规模启用、禁用或调整 Mod 顺序前先更新备份。"
+                   Classes="secondary-text"
+                   TextWrapping="Wrap"/>
+
+        <Border Grid.Row="2" Classes="card">
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button Classes="action-button secondary-action"
                         Content="创建/更新备份"
@@ -20,7 +25,7 @@
             </StackPanel>
         </Border>
 
-        <Border Grid.Row="2" Classes="card">
+        <Border Grid.Row="3" Classes="card">
             <TextBlock Text="后续可在此加入备份列表、快照详情、恢复预览。" Classes="secondary-text"/>
         </Border>
     </Grid>
