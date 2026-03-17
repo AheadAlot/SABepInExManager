@@ -194,6 +194,9 @@ public class ModApplyService
     }
 
     private static string GetStateRoot(string gameRoot)
+        => Path.Combine(gameRoot, "BepInEx", "config", PathConstants.ManagerConfigFolder);
+
+    private static string GetProgramStateRoot()
         => Path.Combine(AppContext.BaseDirectory, PathConstants.ManagerStateFolder);
 
     private static string GetLegacyStateRoot(string gameRoot)
@@ -251,6 +254,9 @@ public class ModApplyService
     private static string GetStateFile(string gameRoot)
         => Path.Combine(GetStateRoot(gameRoot), PathConstants.StateFileName);
 
+    private static string GetProgramStateFile()
+        => Path.Combine(GetProgramStateRoot(), PathConstants.StateFileName);
+
     private static string GetLegacyStateFile(string gameRoot)
         => Path.Combine(GetLegacyStateRoot(gameRoot), PathConstants.StateFileName);
 
@@ -261,17 +267,35 @@ public class ModApplyService
             return;
         }
 
-        var legacyRoot = GetLegacyStateRoot(gameRoot);
-        var legacyStateFile = GetLegacyStateFile(gameRoot);
-        if (!Directory.Exists(legacyRoot) || !File.Exists(legacyStateFile))
-        {
-            return;
-        }
-
         var stateFile = GetStateFile(gameRoot);
         Directory.CreateDirectory(Path.GetDirectoryName(stateFile)!);
-        File.Copy(legacyStateFile, stateFile, overwrite: true);
-        Directory.Delete(legacyRoot, recursive: true);
+
+        var legacyRoot = GetLegacyStateRoot(gameRoot);
+        var legacyStateFile = GetLegacyStateFile(gameRoot);
+        var programStateRoot = GetProgramStateRoot();
+        var programStateFile = GetProgramStateFile();
+
+        if (!File.Exists(stateFile))
+        {
+            if (Directory.Exists(legacyRoot) && File.Exists(legacyStateFile))
+            {
+                File.Copy(legacyStateFile, stateFile, overwrite: true);
+            }
+            else if (Directory.Exists(programStateRoot) && File.Exists(programStateFile))
+            {
+                File.Copy(programStateFile, stateFile, overwrite: true);
+            }
+        }
+
+        if (Directory.Exists(legacyRoot))
+        {
+            Directory.Delete(legacyRoot, recursive: true);
+        }
+
+        if (Directory.Exists(programStateRoot))
+        {
+            Directory.Delete(programStateRoot, recursive: true);
+        }
     }
 
     private static void EnsureGameRootValid(string gameRoot)

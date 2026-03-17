@@ -33,6 +33,7 @@ public class AutoUpdaterSyncService
     private readonly ManagedFileManifestService _managedFileManifestService = new();
     private readonly SignatureService _signatureService = new();
     private readonly AutoUpdaterSqliteStateStore _stateStore = new();
+    private bool _isDebugLoggingEnabled;
 
     public AutoUpdaterSyncService(ManualLogSource logger)
     {
@@ -47,12 +48,22 @@ public class AutoUpdaterSyncService
             return;
         }
 
+        _logger.LogInfo($"[AutoUpdater] 游戏根目录: {gameRoot}");
+
         var appState = LoadAppState(gameRoot!);
+        _isDebugLoggingEnabled = appState?.EnableDebugLogging ?? false;
+        LogDebug($"[AutoUpdater][Debug] Debug 日志开关: {_isDebugLoggingEnabled}");
         var enabledOrder = appState?.EnabledModIds
                            ?.Where(id => !string.IsNullOrWhiteSpace(id))
                            .Distinct(StringComparer.OrdinalIgnoreCase)
                            .ToList()
                        ?? [];
+
+        _logger.LogInfo(
+            $"[AutoUpdater] GUI state 已启用模组数量: {enabledOrder.Count}" +
+            (enabledOrder.Count > 0
+                ? $"，前几个: {string.Join(", ", enabledOrder.Take(5))}"
+                : string.Empty));
 
         if (enabledOrder.Count == 0)
         {
@@ -70,6 +81,7 @@ public class AutoUpdaterSyncService
         var workshopRoot = detectedWorkshopRoot;
 
         var discovered = _modDiscoveryService.ScanMods(workshopRoot!, enabledOrder);
+        LogDebug($"[AutoUpdater][Debug] Workshop 扫描结果: discovered={discovered.Count}, enabledOrder={enabledOrder.Count}");
         var discoveredMap = discovered.ToDictionary(x => x.ModId, x => x, StringComparer.OrdinalIgnoreCase);
         var enabledMods = enabledOrder
             .Where(id => discoveredMap.ContainsKey(id))
@@ -91,6 +103,7 @@ public class AutoUpdaterSyncService
         {
             var mod = enabledMods[i];
             var entries = _managedFileManifestService.BuildEntries(mod);
+            LogDebug($"[AutoUpdater][Debug] [{mod.ModId}] managed entries: {entries.Count}");
             newEntries[mod.ModId] = entries;
             autoUpdaterState.Mods.TryGetValue(mod.ModId, out var oldModState);
             var computed = BuildManagedSignatureWithCache(entries, oldModState);
@@ -114,6 +127,7 @@ public class AutoUpdaterSyncService
 
         if (firstChangedIndex < 0)
         {
+            LogDebug("[AutoUpdater][Debug] 启用模组签名无变化，检查 cache 写回。 ");
             var cacheUpdated = false;
             for (var i = 0; i < enabledMods.Count; i++)
             {
@@ -150,6 +164,7 @@ public class AutoUpdaterSyncService
         var gameBepInExRoot = Path.Combine(gameRoot, "BepInEx");
         var selfAssemblyPath = Path.GetFullPath(GetType().Assembly.Location);
         var now = DateTimeOffset.Now;
+        LogDebug($"[AutoUpdater][Debug] 将开始重放同步: firstChangedIndex={firstChangedIndex}, bepinexRoot={gameBepInExRoot}");
 
         for (var i = firstChangedIndex; i < enabledMods.Count; i++)
         {
@@ -194,14 +209,23 @@ public class AutoUpdaterSyncService
         var workshopContentPath = appState?.WorkshopContentPath;
         if (!string.IsNullOrWhiteSpace(workshopContentPath) && Directory.Exists(workshopContentPath))
         {
+            _logger.LogInfo($"[AutoUpdater] 使用 GUI state 中的 Workshop 路径: {workshopContentPath}");
             return workshopContentPath;
         }
 
-        return _workshopPathResolver.AutoDetectWorkshopPath(gameRoot);
+        if (!string.IsNullOrWhiteSpace(workshopContentPath))
+        {
+            _logger.LogInfo($"[AutoUpdater] GUI state 中的 Workshop 路径无效，尝试自动检测: {workshopContentPath}");
+        }
+
+        var autoDetected = _workshopPathResolver.AutoDetectWorkshopPath(gameRoot);
+        _logger.LogInfo($"[AutoUpdater] 自动检测 Workshop 路径结果: {autoDetected}");
+
+        return autoDetected;
     }
 
     private static string GetGuiStatePath(string gameRoot)
-        => Path.Combine(AppContext.BaseDirectory, PathConstants.ManagerStateFolder, PathConstants.StateFileName);
+        => Path.Combine(gameRoot, "BepInEx", "config", PathConstants.ManagerConfigFolder, PathConstants.StateFileName);
 
     private static string GetAutoUpdaterStateDbPath(string gameRoot)
         => Path.Combine(gameRoot, "BepInEx", "patchers", AutoUpdaterStateDbFolder, AutoUpdaterStateDbFileName);
@@ -212,15 +236,20 @@ public class AutoUpdaterSyncService
     private AppStateLite? LoadAppState(string gameRoot)
     {
         var path = GetGuiStatePath(gameRoot);
+        _logger.LogInfo($"[AutoUpdater] GUI state 路径: {path}");
         if (!File.Exists(path))
         {
+            _logger.LogInfo("[AutoUpdater] GUI state 文件不存在。");
             return null;
         }
 
         try
         {
             var json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<AppStateLite>(json, JsonOptions);
+            var state = JsonSerializer.Deserialize<AppStateLite>(json, JsonOptions);
+            var enabledCount = state?.EnabledModIds?.Count ?? 0;
+            _logger.LogInfo($"[AutoUpdater] GUI state 读取成功，EnabledModIds 原始数量: {enabledCount}");
+            return state;
         }
         catch (Exception ex)
         {
@@ -380,7 +409,7 @@ public class AutoUpdaterSyncService
                 IsDirectory = false,
                 Length = fileInfo.Length,
                 LastWriteTimeUtc = lastWrite,
-                ContentHash = hash,
+                ContentHash = hash ?? string.Empty,
             };
         }
 
@@ -447,5 +476,13 @@ public class AutoUpdaterSyncService
 
     private static string NormalizeRelativePath(string path)
         => path.Replace('\\', '/').TrimStart('/');
+
+    private void LogDebug(string message)
+    {
+        if (_isDebugLoggingEnabled)
+        {
+            _logger.LogInfo(message);
+        }
+    }
 }
 

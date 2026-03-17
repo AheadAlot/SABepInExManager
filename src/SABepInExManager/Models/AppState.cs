@@ -6,6 +6,7 @@ public class AppState
 {
     public List<string> EnabledModIds { get; set; } = new();
     public string? WorkshopContentPath { get; set; }
+    public bool? EnableDebugLogging { get; set; }
 }
 
 public class ConflictItem

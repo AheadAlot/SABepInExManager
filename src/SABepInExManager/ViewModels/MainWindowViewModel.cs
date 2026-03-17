@@ -37,6 +37,7 @@ public class HomePageViewModel : ViewModelBase
     private bool _pathRefreshRequested;
     private int _conflictedModCount;
     private DateTimeOffset? _lastScannedAt;
+    private bool _enableDebugLogging;
 
     public HomePageViewModel()
     {
@@ -190,6 +191,26 @@ public class HomePageViewModel : ViewModelBase
         }
     }
 
+    public bool EnableDebugLogging
+    {
+        get => _enableDebugLogging;
+        set
+        {
+            if (!SetProperty(ref _enableDebugLogging, value))
+            {
+                return;
+            }
+
+            if (!value)
+            {
+                RemoveDebugLogsFromView();
+            }
+
+            AppendInfoLog($"Debug 日志已{(value ? "开启" : "关闭")}。", reset: false);
+            _ = SaveDebugLoggingPreferenceAsync();
+        }
+    }
+
     public IAsyncRelayCommand RefreshModsCommand { get; }
     public IAsyncRelayCommand DetectGameRootPathCommand { get; }
     public IRelayCommand DetectWorkshopPathCommand { get; }
@@ -207,6 +228,9 @@ public class HomePageViewModel : ViewModelBase
         var config = await _configService.LoadAsync();
         GameRootPath = config.GameRootPath ?? string.Empty;
         WorkshopContentPath = config.WorkshopContentPath ?? string.Empty;
+        _enableDebugLogging = config.EnableDebugLogging;
+        OnPropertyChanged(nameof(EnableDebugLogging));
+        AppendDebugLog($"配置加载完成：EnableDebugLogging={EnableDebugLogging}, GameRootPath={GameRootPath}, WorkshopContentPath={WorkshopContentPath}");
 
         if (string.IsNullOrWhiteSpace(GameRootPath))
         {
@@ -230,7 +254,10 @@ public class HomePageViewModel : ViewModelBase
         {
             GameRootPath = GameRootPath,
             WorkshopContentPath = WorkshopContentPath,
+            EnableDebugLogging = EnableDebugLogging,
         });
+
+        AppendDebugLog("配置已保存。", reset: false);
     }
 
     public async Task RefreshModsAfterPathChangedAsync()
@@ -324,6 +351,7 @@ public class HomePageViewModel : ViewModelBase
 
     private async Task RefreshModsAsync()
     {
+        AppendDebugLog($"开始刷新模组：GameRootPath={GameRootPath}, WorkshopContentPath={WorkshopContentPath}", reset: false);
         _isRefreshingMods = true;
         UnsubscribeAllModPropertyChanged();
         Mods.Clear();
@@ -339,6 +367,7 @@ public class HomePageViewModel : ViewModelBase
             var state = _modApplyService.LoadState(GameRootPath);
             var enabledOrder = state?.EnabledModIds ?? new List<string>();
             var mods = _workshopService.ScanMods(WorkshopContentPath, enabledOrder);
+            AppendDebugLog($"扫描完成（内部）：已读取启用顺序 {enabledOrder.Count} 项，扫描到 {mods.Count} 项。", reset: false);
 
             foreach (var mod in mods)
             {
@@ -362,6 +391,7 @@ public class HomePageViewModel : ViewModelBase
 
     private void DetectWorkshopPath()
     {
+        AppendDebugLog("开始自动探测工坊目录。", reset: false);
         try
         {
             ValidateGameRootForActionsOrThrow();
@@ -390,6 +420,7 @@ public class HomePageViewModel : ViewModelBase
 
     private async Task DetectGameRootPathAsync(bool triggeredByUser)
     {
+        AppendDebugLog($"开始自动探测游戏根目录：triggeredByUser={triggeredByUser}", reset: false);
         try
         {
             var result = _steamLocatorService.TryDetectGameRoot(PathConstants.WorkshopAppId);
@@ -405,6 +436,7 @@ public class HomePageViewModel : ViewModelBase
 
             GameRootPath = result.GameRootPath;
             AppendLog($"已自动探测游戏根目录：{GameRootPath}", reset: triggeredByUser);
+            AppendDebugLog($"自动探测结果详情：候选数量={result.Candidates.Count}, 选中路径={result.GameRootPath}", reset: false);
 
             if (result.Candidates.Count > 1)
             {
@@ -552,6 +584,8 @@ public class HomePageViewModel : ViewModelBase
                 LastRunAt = DateTimeOffset.MinValue,
                 Mods = new Dictionary<string, AutoUpdaterModState>(StringComparer.OrdinalIgnoreCase),
             });
+
+            AppendDebugLog($"AutoUpdater 缓存文件已重置：{autoUpdaterDbPath}", reset: false);
 
             AppendLog("已清空模组版本缓存。", reset: true);
         }
@@ -729,7 +763,9 @@ public class HomePageViewModel : ViewModelBase
         var existingState = _modApplyService.LoadState(GameRootPath) ?? new AppState();
         existingState.EnabledModIds = GetEnabledModsInOrder().Select(m => m.ModId).ToList();
         existingState.WorkshopContentPath = WorkshopContentPath;
+        existingState.EnableDebugLogging = EnableDebugLogging;
         _modApplyService.SaveState(GameRootPath, existingState);
+        AppendDebugLog($"状态已持久化：EnabledModIds={existingState.EnabledModIds.Count}, EnableDebugLogging={EnableDebugLogging}", reset: false);
     }
 
     private async Task InstallBepInExAsync()
@@ -747,6 +783,7 @@ public class HomePageViewModel : ViewModelBase
         try
         {
             ValidateGameRootOrThrow();
+            AppendDebugLog($"开始执行 BepInEx 安装流程：forceReinstall={forceReinstall}, GameRootPath={GameRootPath}", reset: false);
             AppendLog(
                 forceReinstall
                     ? "开始重装 BepInEx（先清理旧文件，再重新安装）..."
@@ -757,6 +794,7 @@ public class HomePageViewModel : ViewModelBase
                 ? await _bepInExService.ReinstallAsync(GameRootPath, message => AppendLog(message))
                 : await _bepInExService.InstallFromGitHubAsync(GameRootPath, message => AppendLog(message));
             AppendLog(result.Message);
+            AppendDebugLog($"BepInEx 安装流程结束：success={result.Success}", reset: false);
         }
         catch (Exception ex)
         {
@@ -836,6 +874,11 @@ public class HomePageViewModel : ViewModelBase
                                  || hasUnityDataSignature
                                  || hasBepInExOrDoorstop;
 
+        AppendDebugLog(
+            $"游戏目录校验：exeCount={exeFiles.Count}, dataDirCount={dataDirs.Count}, " +
+            $"unityPlayer={hasUnityPlayer}, gameAssembly={hasGameAssembly}, steamApi={hasSteamApi}, unityData={hasUnityDataSignature}, bepinexOrDoorstop={hasBepInExOrDoorstop}",
+            reset: false);
+
         if (!hasOtherIndicators)
         {
             throw new InvalidOperationException(
@@ -848,17 +891,52 @@ public class HomePageViewModel : ViewModelBase
         return Mods.Where(m => m.IsEnabled).ToList();
     }
 
+    private async Task SaveDebugLoggingPreferenceAsync()
+    {
+        await SaveConfigAsync();
+        PersistEnabledState();
+    }
+
+    private void RemoveDebugLogsFromView()
+    {
+        var debugLogs = Logs.Where(x => x.Level == AppLogLevel.Debug).ToList();
+        if (debugLogs.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var log in debugLogs)
+        {
+            Logs.Remove(log);
+        }
+    }
+
+    private void AppendInfoLog(string message, bool reset = false)
+        => AppendLogInternal(message, AppLogLevel.Info, reset);
+
+    private void AppendDebugLog(string message, bool reset = false)
+        => AppendLogInternal(message, AppLogLevel.Debug, reset);
+
     private void AppendLog(string message, bool reset = false)
+        => AppendInfoLog(message, reset);
+
+    private void AppendLogInternal(string message, AppLogLevel level, bool reset = false)
     {
         if (reset)
         {
             Logs.Clear();
         }
 
+        if (level == AppLogLevel.Debug && !EnableDebugLogging)
+        {
+            return;
+        }
+
         Logs.Add(new LogEntry
         {
             Timestamp = DateTimeOffset.Now,
             Message = message,
+            Level = level,
         });
 
         while (Logs.Count > MaxLogEntries)

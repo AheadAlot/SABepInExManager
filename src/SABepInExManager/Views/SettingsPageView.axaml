@@ -44,17 +44,19 @@
             <StackPanel Spacing="10">
                 <TextBlock Text="高级设置" FontWeight="SemiBold"/>
                 <TextBlock Text="以下操作会直接修改本地数据，请谨慎操作。" Classes="secondary-text"/>
+                <CheckBox Content="开启 Debug 日志（关闭时不记录/不显示 Debug 日志）"
+                          IsChecked="{Binding HomePage.EnableDebugLogging}"/>
                 <StackPanel Orientation="Vertical" Spacing="8">
-                    <Button Classes="action-button danger-action"
-                            HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Center"
-                            Content="重新安装BepInEx"
-                            Click="OnReinstallBepInExClicked"/>
                     <Button Classes="action-button secondary-action"
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Center"
                             Content="清空模组版本缓存"
                             Click="OnClearModVersionCacheClicked"/>
+                    <Button Classes="action-button danger-action"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Content="重新安装BepInEx"
+                            Click="OnReinstallBepInExClicked"/>
                     <Button Classes="action-button danger-action"
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Center"
