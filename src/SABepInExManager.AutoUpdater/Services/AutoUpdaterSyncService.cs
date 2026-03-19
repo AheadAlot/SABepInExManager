@@ -18,7 +18,6 @@ public class AutoUpdaterSyncService
     private const string LegacyAutoUpdaterStateFolder = "SABepInExManager.AutoUpdater";
     private const string AutoUpdaterStateDbFileName = "state.db";
     private const string LegacyAutoUpdaterStateJsonFileName = "state.json";
-    private const string BackupSuffix = ".bak";
     private const string PreservedPluginDirectory = "ConfigurationManager";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -277,7 +276,7 @@ public class AutoUpdaterSyncService
                 if (legacyState != null)
                 {
                     _stateStore.Save(dbPath, legacyState);
-                    BackupLegacyJsonState(legacyJsonPath);
+                    DeleteLegacyJsonStateDirectory(legacyJsonPath);
                 }
             }
 
@@ -317,18 +316,23 @@ public class AutoUpdaterSyncService
         }
     }
 
-    private void BackupLegacyJsonState(string legacyJsonPath)
+    private void DeleteLegacyJsonStateDirectory(string legacyJsonPath)
     {
         try
         {
-            var backupPath = legacyJsonPath + BackupSuffix;
-            File.Copy(legacyJsonPath, backupPath, overwrite: true);
-            File.Delete(legacyJsonPath);
-            _logger.LogInfo($"[AutoUpdater] 已完成 state.json -> SQLite 迁移，备份文件: {backupPath}");
+            var legacyFolderPath = Path.GetDirectoryName(legacyJsonPath);
+            if (string.IsNullOrWhiteSpace(legacyFolderPath) || !Directory.Exists(legacyFolderPath))
+            {
+                _logger.LogInfo("[AutoUpdater] 已完成 state.json -> SQLite 迁移，旧目录不存在或无效，跳过清理。 ");
+                return;
+            }
+
+            Directory.Delete(legacyFolderPath, recursive: true);
+            _logger.LogInfo($"[AutoUpdater] 已完成 state.json -> SQLite 迁移，并删除旧目录: {legacyFolderPath}");
         }
         catch (Exception ex)
         {
-            _logger.LogWarning($"[AutoUpdater] 迁移后备份旧 state.json 失败: {ex.Message}");
+            _logger.LogWarning($"[AutoUpdater] 迁移后删除旧目录失败: {ex.Message}");
         }
     }
 
