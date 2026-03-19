@@ -1,0 +1,86 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SABepInExManager.ViewModels"
+             x:Class="SABepInExManager.Views.HomeDashboardView"
+             x:DataType="vm:HomeDashboardViewModel">
+
+    <Grid Margin="12" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
+        <Border Classes="status-banner missing"
+                Classes.installed="{Binding HomePage.IsBepInExInstalled}">
+            <StackPanel Spacing="4">
+                <TextBlock Text="{Binding HomePage.DashboardPrimaryStatusText}"
+                           FontWeight="SemiBold"
+                           FontSize="15"/>
+                <TextBlock Text="{Binding HomePage.DashboardSecondaryStatusText}"
+                           Classes="secondary-text"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1" Classes="card">
+            <Grid RowDefinitions="Auto,Auto" RowSpacing="10">
+                <TextBlock Text="总览" FontSize="16" FontWeight="Bold"/>
+                <Grid Grid.Row="1" ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                    <Border Classes="stat-card">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Mod 总数" Classes="secondary-text"/>
+                            <TextBlock Text="{Binding HomePage.ManagedModCount}" Classes="stat-value"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="1" Classes="stat-card">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="已启用" Classes="secondary-text"/>
+                            <TextBlock Text="{Binding HomePage.EnabledModCount}" Classes="stat-value"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="2" Classes="stat-card">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="冲突数" Classes="secondary-text"/>
+                            <TextBlock Text="{Binding HomePage.ConflictedModCount}" Classes="stat-value"/>
+                        </StackPanel>
+                    </Border>
+
+                </Grid>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Classes="card">
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+                <TextBlock Text="环境信息" FontSize="16" FontWeight="Bold"/>
+
+                <Grid Grid.Row="1" ColumnDefinitions="120,*" Classes="kv-row">
+                    <TextBlock Text="BepInEx 状态" Classes="secondary-text"/>
+                    <TextBlock Grid.Column="1" Text="{Binding HomePage.BepInExStatusText}" TextWrapping="Wrap"/>
+                </Grid>
+
+                <Grid Grid.Row="2" ColumnDefinitions="120,*" Classes="kv-row">
+                    <TextBlock Text="游戏目录" Classes="secondary-text"/>
+                    <TextBlock Grid.Column="1" Text="{Binding HomePage.DisplayGameRootPath}" TextWrapping="Wrap"/>
+                </Grid>
+
+                <Grid Grid.Row="3" ColumnDefinitions="120,*" Classes="kv-row">
+                    <TextBlock Text="Workshop 目录" Classes="secondary-text"/>
+                    <TextBlock Grid.Column="1" Text="{Binding HomePage.DisplayWorkshopContentPath}" TextWrapping="Wrap"/>
+                </Grid>
+
+                <Grid Grid.Row="4" ColumnDefinitions="120,*" Classes="kv-row">
+                    <TextBlock Text="备份目录" Classes="secondary-text"/>
+                    <TextBlock Grid.Column="1" Text="{Binding HomePage.BaselineDirectoryPath}" TextWrapping="Wrap"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="3" Classes="card">
+            <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
+                <TextBlock Text="说明" FontSize="16" FontWeight="Bold"/>
+                <StackPanel Grid.Row="1" Spacing="4">
+                    <TextBlock Text="遇到任何问题请加群1080642414找远远超越号沟通。" Classes="secondary-text"/>
+                    <TextBlock Text="左侧前往各个功能页面。" Classes="secondary-text"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
+

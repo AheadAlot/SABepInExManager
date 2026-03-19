@@ -18,15 +18,16 @@ public class ModApplyService
         WriteIndented = true,
     };
 
-    public void CreateOrUpdateBaseline(string gameRoot)
+    public void CreateBaseline(string gameRoot)
     {
         EnsureGameRootValid(gameRoot);
 
-        var baselineRoot = GetBaselineRoot(gameRoot);
-        if (Directory.Exists(baselineRoot))
-        {
-            Directory.Delete(baselineRoot, recursive: true);
-        }
+        var baselineContainerRoot = GetBaselineContainerRoot(gameRoot);
+        Directory.CreateDirectory(baselineContainerRoot);
+
+        var baselineRoot = Path.Combine(
+            baselineContainerRoot,
+            DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString());
 
         Directory.CreateDirectory(baselineRoot);
         foreach (var sub in PathConstants.ManagedBepInExSubDirs)
@@ -44,11 +45,11 @@ public class ModApplyService
         }
     }
 
-    public void RestoreBaseline(string gameRoot)
+    public void RestoreBaseline(string gameRoot, string? snapshotFolderName = null)
     {
         EnsureGameRootValid(gameRoot);
-        var baselineRoot = GetBaselineRoot(gameRoot);
-        if (!Directory.Exists(baselineRoot))
+        var baselineRoot = ResolveBaselineRootForRestore(gameRoot, snapshotFolderName);
+        if (string.IsNullOrWhiteSpace(baselineRoot) || !Directory.Exists(baselineRoot))
         {
             throw new InvalidOperationException("未找到备份，请先创建备份。");
         }
@@ -80,10 +81,40 @@ public class ModApplyService
         RestorePreservedPluginDirectories(gameRoot, preservedPlugins);
     }
 
+    public void DeleteBaselineSnapshot(string gameRoot, string snapshotFolderName)
+    {
+        EnsureGameRootValid(gameRoot);
+        if (string.IsNullOrWhiteSpace(snapshotFolderName))
+        {
+            throw new InvalidOperationException("备份目录名称无效。");
+        }
+
+        var baselineContainerRoot = GetBaselineContainerRoot(gameRoot);
+        var snapshotRoot = Path.Combine(baselineContainerRoot, snapshotFolderName);
+        if (!Directory.Exists(snapshotRoot))
+        {
+            throw new InvalidOperationException("备份目录不存在。 ");
+        }
+
+        Directory.Delete(snapshotRoot, recursive: true);
+    }
+
+    public void DeleteAllBaselineSnapshots(string gameRoot)
+    {
+        EnsureGameRootValid(gameRoot);
+
+        var baselineContainerRoot = GetBaselineContainerRoot(gameRoot);
+        if (!Directory.Exists(baselineContainerRoot))
+        {
+            return;
+        }
+
+        Directory.Delete(baselineContainerRoot, recursive: true);
+    }
+
     public void Apply(
         string gameRoot,
-        IReadOnlyList<WorkshopModInfo> enabledMods,
-        IReadOnlyDictionary<string, string>? appliedModSignatures = null)
+        IReadOnlyList<WorkshopModInfo> enabledMods)
     {
         EnsureGameRootValid(gameRoot);
 
@@ -128,15 +159,13 @@ public class ModApplyService
         SaveState(gameRoot, new AppState
         {
             EnabledModIds = enabledMods.Select(x => x.ModId).ToList(),
-            LastAppliedAt = DateTimeOffset.Now,
-            AppliedModSignatures = appliedModSignatures is null
-                ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-                : new Dictionary<string, string>(appliedModSignatures, StringComparer.OrdinalIgnoreCase),
         });
     }
 
     public AppState? LoadState(string gameRoot)
     {
+        MigrateLegacyStateIfNeeded(gameRoot);
+
         var file = GetStateFile(gameRoot);
         if (!File.Exists(file))
         {
@@ -156,6 +185,8 @@ public class ModApplyService
 
     public void SaveState(string gameRoot, AppState state)
     {
+        MigrateLegacyStateIfNeeded(gameRoot);
+
         var file = GetStateFile(gameRoot);
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
         var json = JsonSerializer.Serialize(state, JsonOptions);
@@ -163,13 +194,109 @@ public class ModApplyService
     }
 
     private static string GetStateRoot(string gameRoot)
+        => Path.Combine(gameRoot, "BepInEx", "config", PathConstants.ManagerConfigFolder);
+
+    private static string GetProgramStateRoot()
+        => Path.Combine(AppContext.BaseDirectory, PathConstants.ManagerStateFolder);
+
+    private static string GetLegacyStateRoot(string gameRoot)
         => Path.Combine(gameRoot, PathConstants.StateRootFolder);
 
-    private static string GetBaselineRoot(string gameRoot)
-        => Path.Combine(GetStateRoot(gameRoot), PathConstants.BaselineFolder);
+    private static string GetBaselineContainerRoot(string gameRoot)
+        => Path.Combine(GetLegacyStateRoot(gameRoot), PathConstants.BaselineFolder);
+
+    private static string? ResolveBaselineRootForRestore(string gameRoot, string? snapshotFolderName)
+    {
+        if (string.IsNullOrWhiteSpace(snapshotFolderName))
+        {
+            return GetLatestBaselineRoot(gameRoot);
+        }
+
+        return Path.Combine(GetBaselineContainerRoot(gameRoot), snapshotFolderName);
+    }
+
+    private static string? GetLatestBaselineRoot(string gameRoot)
+    {
+        var baselineContainerRoot = GetBaselineContainerRoot(gameRoot);
+        if (!Directory.Exists(baselineContainerRoot))
+        {
+            return null;
+        }
+
+        var hasLegacyBaselineContent = PathConstants.ManagedBepInExSubDirs
+            .Select(sub => Path.Combine(baselineContainerRoot, sub))
+            .Any(Directory.Exists);
+        if (hasLegacyBaselineContent)
+        {
+            return baselineContainerRoot;
+        }
+
+        var latestSnapshot = Directory
+            .GetDirectories(baselineContainerRoot)
+            .Select(path =>
+            {
+                var name = Path.GetFileName(path);
+                var isValid = long.TryParse(name, out var timestamp);
+                return new
+                {
+                    Path = path,
+                    IsValid = isValid,
+                    Timestamp = isValid ? timestamp : -1,
+                };
+            })
+            .Where(x => x.IsValid)
+            .OrderByDescending(x => x.Timestamp)
+            .FirstOrDefault();
+
+        return latestSnapshot?.Path;
+    }
 
     private static string GetStateFile(string gameRoot)
         => Path.Combine(GetStateRoot(gameRoot), PathConstants.StateFileName);
+
+    private static string GetProgramStateFile()
+        => Path.Combine(GetProgramStateRoot(), PathConstants.StateFileName);
+
+    private static string GetLegacyStateFile(string gameRoot)
+        => Path.Combine(GetLegacyStateRoot(gameRoot), PathConstants.StateFileName);
+
+    private static void MigrateLegacyStateIfNeeded(string gameRoot)
+    {
+        if (string.IsNullOrWhiteSpace(gameRoot) || !Directory.Exists(gameRoot))
+        {
+            return;
+        }
+
+        var stateFile = GetStateFile(gameRoot);
+        Directory.CreateDirectory(Path.GetDirectoryName(stateFile)!);
+
+        var legacyRoot = GetLegacyStateRoot(gameRoot);
+        var legacyStateFile = GetLegacyStateFile(gameRoot);
+        var programStateRoot = GetProgramStateRoot();
+        var programStateFile = GetProgramStateFile();
+
+        if (!File.Exists(stateFile))
+        {
+            if (Directory.Exists(legacyRoot) && File.Exists(legacyStateFile))
+            {
+                File.Copy(legacyStateFile, stateFile, overwrite: true);
+            }
+            else if (Directory.Exists(programStateRoot) && File.Exists(programStateFile))
+            {
+                File.Copy(programStateFile, stateFile, overwrite: true);
+            }
+        }
+
+        if (Directory.Exists(legacyRoot))
+        {
+            Directory.Delete(legacyRoot, recursive: true);
+        }
+
+        if (Directory.Exists(programStateRoot))
+        {
+            Directory.Delete(programStateRoot, recursive: true);
+        }
+    }
 
     private static void EnsureGameRootValid(string gameRoot)
     {

@@ -60,8 +60,20 @@ public class ModsListBoxDropHandler : DropHandlerBase
 
     private bool Reorder(ListBox listBox, DragEventArgs e, object? sourceContext, object? targetContext, bool execute)
     {
+        var vm = targetContext switch
+        {
+            HomePageViewModel homePage => homePage,
+            ModsPageViewModel modsPage => modsPage.HomePage,
+            _ => listBox.DataContext switch
+            {
+                HomePageViewModel homePage => homePage,
+                ModsPageViewModel modsPage => modsPage.HomePage,
+                _ => null,
+            },
+        };
+
         if (sourceContext is not WorkshopModInfo sourceItem
-            || targetContext is not HomePageViewModel vm
+            || vm is null
             || GetTargetItemContainer(listBox, e) is not { DataContext: WorkshopModInfo targetItem } targetContainer)
         {
             return false;

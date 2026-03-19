@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SABepInExManager.ViewModels"
+             x:Class="SABepInExManager.Views.BackupPageView"
+             x:DataType="vm:BackupPageViewModel">
+
+    <Grid Margin="12" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
+        <TextBlock Text="备份与恢复" FontSize="22" FontWeight="Bold"/>
+
+        <TextBlock Grid.Row="1"
+                   Text="备份会保存当前游戏目录下被 Mod 管理器接管的文件状态。每次创建备份都会生成一个以 Unix 时间戳命名的新快照目录，恢复时将回滚到最近一次备份。"
+                   Classes="secondary-text"
+                   TextWrapping="Wrap"/>
+
+        <Button Grid.Row="2"
+                Classes="action-button primary-action"
+                Content="创建备份"
+                IsEnabled="{Binding HomePage.IsBepInExInstalled}"
+                Command="{Binding HomePage.CreateBaselineCommand}"
+                BorderThickness="0"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
+                MinHeight="44"/>
+
+        <Border Grid.Row="3" Classes="card">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="暂无备份快照。" Classes="secondary-text" IsVisible="{Binding ShowEmptyState}"/>
+
+                    <ItemsControl ItemsSource="{Binding Snapshots}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:BackupSnapshotItemViewModel">
+                                <Border Classes="card" Padding="10" Margin="0,0,0,8">
+                                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="{Binding FolderName, StringFormat=备份目录：{0}}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding CreatedAtText, StringFormat=创建时间：{0}}" Classes="secondary-text"/>
+                                            <TextBlock Text="{Binding FileCount, StringFormat=文件数量：{0}}" Classes="secondary-text"/>
+                                            <TextBlock Text="{Binding SizeText, StringFormat=备份大小：{0}}" Classes="secondary-text"/>
+                                        </StackPanel>
+
+                                        <Button Grid.Column="1"
+                                                Classes="action-button danger-action"
+                                                Content="删除备份"
+                                                Tag="{Binding FolderName}"
+                                                Click="OnDeleteSnapshotClicked"/>
+
+                                        <Button Grid.Column="2"
+                                                Classes="action-button primary-action"
+                                                Content="恢复备份"
+                                                Tag="{Binding FolderName}"
+                                                Click="OnRestoreSnapshotClicked"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>
+

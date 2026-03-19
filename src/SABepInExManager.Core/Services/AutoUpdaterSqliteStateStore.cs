@@ -3,16 +3,17 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Data;
-using Microsoft.Data.Sqlite;
+using System.Data.SQLite;
 using SABepInExManager.Core.Models;
 
 namespace SABepInExManager.Core.Services;
 
 public sealed class AutoUpdaterSqliteStateStore
 {
-    public AutoUpdaterSyncState Load(string dbPath)
+    public AutoUpdaterSyncState Load(string dbPath, Action<string>? logDebug = null)
     {
-        EnsureSchema(dbPath);
+        EnsureSchema(dbPath, logDebug);
+        LogDebug(logDebug, $"[AutoUpdater][Debug][SQLite] Load start: dbPath={dbPath}");
 
         var state = new AutoUpdaterSyncState();
         using var connection = CreateOpenConnection(dbPath);
@@ -20,9 +21,12 @@ public sealed class AutoUpdaterSqliteStateStore
         using (var cmd = connection.CreateCommand())
         {
             cmd.CommandText = "SELECT key, value FROM auto_updater_meta;";
+            LogSql(logDebug, cmd.CommandText);
             using var reader = cmd.ExecuteReader();
+            var rowCount = 0;
             while (reader.Read())
             {
+                rowCount++;
                 var key = reader.GetString(0);
                 var value = reader.GetString(1);
                 switch (key)
@@ -36,14 +40,19 @@ public sealed class AutoUpdaterSqliteStateStore
                         break;
                 }
             }
+
+            LogDebug(logDebug, $"[AutoUpdater][Debug][SQLite] meta rows={rowCount}");
         }
 
         using (var cmd = connection.CreateCommand())
         {
             cmd.CommandText = "SELECT mod_id, signature, last_synced_at FROM auto_updater_mod;";
+            LogSql(logDebug, cmd.CommandText);
             using var reader = cmd.ExecuteReader();
+            var rowCount = 0;
             while (reader.Read())
             {
+                rowCount++;
                 var modId = reader.GetString(0);
                 var signature = reader.GetString(1);
                 var lastSyncedAt = ReadDateTimeOffset(reader, 2);
@@ -58,14 +67,19 @@ public sealed class AutoUpdaterSqliteStateStore
 
                 state.Mods[modId] = mod;
             }
+
+            LogDebug(logDebug, $"[AutoUpdater][Debug][SQLite] mod rows={rowCount}");
         }
 
         using (var cmd = connection.CreateCommand())
         {
             cmd.CommandText = "SELECT mod_id, target_relative_path FROM auto_updater_mod_file ORDER BY target_relative_path COLLATE NOCASE;";
+            LogSql(logDebug, cmd.CommandText);
             using var reader = cmd.ExecuteReader();
+            var rowCount = 0;
             while (reader.Read())
             {
+                rowCount++;
                 var modId = reader.GetString(0);
                 var target = reader.GetString(1);
                 if (!state.Mods.TryGetValue(modId, out var mod))
@@ -75,15 +89,20 @@ public sealed class AutoUpdaterSqliteStateStore
 
                 mod.Files.Add(target);
             }
+
+            LogDebug(logDebug, $"[AutoUpdater][Debug][SQLite] mod_file rows={rowCount}");
         }
 
         using (var cmd = connection.CreateCommand())
         {
             cmd.CommandText =
                 "SELECT mod_id, target_relative_path, source_path, is_directory, length, last_write_time_utc, content_hash FROM auto_updater_cached_file;";
+            LogSql(logDebug, cmd.CommandText);
             using var reader = cmd.ExecuteReader();
+            var rowCount = 0;
             while (reader.Read())
             {
+                rowCount++;
                 var modId = reader.GetString(0);
                 if (!state.Mods.TryGetValue(modId, out var mod))
                 {
@@ -106,24 +125,35 @@ public sealed class AutoUpdaterSqliteStateStore
                     ContentHash = contentHash,
                 };
             }
+
+            LogDebug(logDebug, $"[AutoUpdater][Debug][SQLite] cached_file rows={rowCount}");
         }
+
+        LogDebug(logDebug,
+            $"[AutoUpdater][Debug][SQLite] Load done: mods={state.Mods.Count}, appId={state.AppId}, lastRunAt={state.LastRunAt:O}");
 
         return state;
     }
 
-    public void Save(string dbPath, AutoUpdaterSyncState state)
+    public void Save(string dbPath, AutoUpdaterSyncState state, Action<string>? logDebug = null)
     {
-        EnsureSchema(dbPath);
+        EnsureSchema(dbPath, logDebug);
+        LogDebug(logDebug, $"[AutoUpdater][Debug][SQLite] Save start: dbPath={dbPath}, mods={state.Mods.Count}");
 
         using var connection = CreateOpenConnection(dbPath);
         using var transaction = connection.BeginTransaction();
 
-        UpsertMeta(connection, transaction, "app_id", state.AppId ?? string.Empty);
-        UpsertMeta(connection, transaction, "last_run_at", state.LastRunAt.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture));
+        UpsertMeta(connection, transaction, "app_id", state.AppId ?? string.Empty, logDebug);
+        UpsertMeta(connection, transaction, "last_run_at", state.LastRunAt.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture),
+            logDebug);
 
-        ExecuteNonQuery(connection, transaction, "DELETE FROM auto_updater_cached_file;");
-        ExecuteNonQuery(connection, transaction, "DELETE FROM auto_updater_mod_file;");
-        ExecuteNonQuery(connection, transaction, "DELETE FROM auto_updater_mod;");
+        ExecuteNonQuery(connection, transaction, "DELETE FROM auto_updater_cached_file;", logDebug);
+        ExecuteNonQuery(connection, transaction, "DELETE FROM auto_updater_mod_file;", logDebug);
+        ExecuteNonQuery(connection, transaction, "DELETE FROM auto_updater_mod;", logDebug);
+
+        var modRows = 0;
+        var modFileRows = 0;
+        var cachedRows = 0;
 
         foreach (var pair in state.Mods)
         {
@@ -139,6 +169,7 @@ public sealed class AutoUpdaterSqliteStateStore
                 insertMod.Parameters.AddWithValue("@signature", mod.Signature ?? string.Empty);
                 insertMod.Parameters.AddWithValue("@lastSyncedAt", mod.LastSyncedAt.ToUnixTimeMilliseconds());
                 insertMod.ExecuteNonQuery();
+                modRows++;
             }
 
             var files = mod.Files ?? [];
@@ -151,6 +182,7 @@ public sealed class AutoUpdaterSqliteStateStore
                 insertFile.Parameters.AddWithValue("@modId", modId);
                 insertFile.Parameters.AddWithValue("@target", file ?? string.Empty);
                 insertFile.ExecuteNonQuery();
+                modFileRows++;
             }
 
             var cachedFiles = mod.CachedFiles ?? new Dictionary<string, AutoUpdaterCachedFileState>(StringComparer.OrdinalIgnoreCase);
@@ -172,13 +204,16 @@ public sealed class AutoUpdaterSqliteStateStore
                 insertCached.Parameters.AddWithValue("@lastWrite", cached.LastWriteTimeUtc.ToUnixTimeMilliseconds());
                 insertCached.Parameters.AddWithValue("@contentHash", cached.ContentHash ?? string.Empty);
                 insertCached.ExecuteNonQuery();
+                cachedRows++;
             }
         }
 
         transaction.Commit();
+        LogDebug(logDebug,
+            $"[AutoUpdater][Debug][SQLite] Save done: modRows={modRows}, modFileRows={modFileRows}, cachedRows={cachedRows}");
     }
 
-    public void EnsureSchema(string dbPath)
+    public void EnsureSchema(string dbPath, Action<string>? logDebug = null)
     {
         var dir = Path.GetDirectoryName(dbPath);
         if (!string.IsNullOrWhiteSpace(dir))
@@ -186,26 +221,27 @@ public sealed class AutoUpdaterSqliteStateStore
             Directory.CreateDirectory(dir);
         }
 
+        LogDebug(logDebug, $"[AutoUpdater][Debug][SQLite] EnsureSchema: dbPath={dbPath}");
         using var connection = CreateOpenConnection(dbPath);
-        ExecuteNonQuery(connection, null, "PRAGMA foreign_keys = ON;");
+        ExecuteNonQuery(connection, null, "PRAGMA foreign_keys = ON;", logDebug);
         ExecuteNonQuery(connection, null,
             "CREATE TABLE IF NOT EXISTS auto_updater_meta (" +
             "key TEXT PRIMARY KEY, " +
             "value TEXT NOT NULL);"
-        );
+        , logDebug);
         ExecuteNonQuery(connection, null,
             "CREATE TABLE IF NOT EXISTS auto_updater_mod (" +
             "mod_id TEXT PRIMARY KEY COLLATE NOCASE, " +
             "signature TEXT NOT NULL, " +
             "last_synced_at INTEGER NOT NULL);"
-        );
+        , logDebug);
         ExecuteNonQuery(connection, null,
             "CREATE TABLE IF NOT EXISTS auto_updater_mod_file (" +
             "mod_id TEXT NOT NULL COLLATE NOCASE, " +
             "target_relative_path TEXT NOT NULL COLLATE NOCASE, " +
             "PRIMARY KEY (mod_id, target_relative_path), " +
             "FOREIGN KEY(mod_id) REFERENCES auto_updater_mod(mod_id) ON DELETE CASCADE);"
-        );
+        , logDebug);
         ExecuteNonQuery(connection, null,
             "CREATE TABLE IF NOT EXISTS auto_updater_cached_file (" +
             "mod_id TEXT NOT NULL COLLATE NOCASE, " +
@@ -217,18 +253,18 @@ public sealed class AutoUpdaterSqliteStateStore
             "content_hash TEXT NOT NULL, " +
             "PRIMARY KEY (mod_id, target_relative_path), " +
             "FOREIGN KEY(mod_id) REFERENCES auto_updater_mod(mod_id) ON DELETE CASCADE);"
-        );
+        , logDebug);
         ExecuteNonQuery(connection, null,
             "CREATE INDEX IF NOT EXISTS idx_auto_updater_mod_file_mod_id ON auto_updater_mod_file (mod_id);"
-        );
+        , logDebug);
         ExecuteNonQuery(connection, null,
             "CREATE INDEX IF NOT EXISTS idx_auto_updater_cached_file_mod_id ON auto_updater_cached_file (mod_id);"
-        );
+        , logDebug);
     }
 
-    private static SqliteConnection CreateOpenConnection(string dbPath)
+    private static SQLiteConnection CreateOpenConnection(string dbPath)
     {
-        var connection = new SqliteConnection($"Data Source={dbPath};Mode=ReadWriteCreate;Cache=Shared");
+        var connection = new SQLiteConnection($"Data Source={dbPath};Version=3;Foreign Keys=True;");
         connection.Open();
 
         using var pragma = connection.CreateCommand();
@@ -238,27 +274,62 @@ public sealed class AutoUpdaterSqliteStateStore
         return connection;
     }
 
-    private static void UpsertMeta(SqliteConnection connection, SqliteTransaction transaction, string key, string value)
+    private static void UpsertMeta(SQLiteConnection connection, SQLiteTransaction transaction, string key, string value,
+        Action<string>? logDebug = null)
     {
         using var cmd = connection.CreateCommand();
         cmd.Transaction = transaction;
         cmd.CommandText =
-            "INSERT INTO auto_updater_meta (key, value) VALUES (@key, @value) " +
-            "ON CONFLICT(key) DO UPDATE SET value=excluded.value;";
+            "UPDATE auto_updater_meta SET value = @value WHERE key = @key;";
         cmd.Parameters.AddWithValue("@key", key);
         cmd.Parameters.AddWithValue("@value", value);
-        cmd.ExecuteNonQuery();
+        LogSql(logDebug, cmd.CommandText, $"@key={key}, @value={value}");
+        var affected = cmd.ExecuteNonQuery();
+        LogDebug(logDebug, $"[AutoUpdater][Debug][SQLite] UpsertMeta UPDATE affected={affected}, key={key}");
+
+        if (affected == 0)
+        {
+            cmd.CommandText = "INSERT INTO auto_updater_meta (key, value) VALUES (@key, @value);";
+            LogSql(logDebug, cmd.CommandText, $"@key={key}, @value={value}");
+            var insertAffected = cmd.ExecuteNonQuery();
+            LogDebug(logDebug, $"[AutoUpdater][Debug][SQLite] UpsertMeta INSERT affected={insertAffected}, key={key}");
+        }
     }
 
-    private static void ExecuteNonQuery(SqliteConnection connection, SqliteTransaction? transaction, string sql)
+    private static void ExecuteNonQuery(SQLiteConnection connection, SQLiteTransaction? transaction, string sql,
+        Action<string>? logDebug = null)
     {
         using var cmd = connection.CreateCommand();
         cmd.Transaction = transaction;
         cmd.CommandText = sql;
-        cmd.ExecuteNonQuery();
+        LogSql(logDebug, sql);
+        var affected = cmd.ExecuteNonQuery();
+        LogDebug(logDebug, $"[AutoUpdater][Debug][SQLite] ExecuteNonQuery affected={affected}");
     }
 
-    private static DateTimeOffset ReadDateTimeOffset(SqliteDataReader reader, int ordinal)
+    private static void LogSql(Action<string>? logDebug, string sql, string? parameters = null)
+    {
+        if (logDebug == null)
+        {
+            return;
+        }
+
+        var compactSql = sql.Replace("\r", " ").Replace("\n", " ").Trim();
+        if (string.IsNullOrWhiteSpace(parameters))
+        {
+            logDebug($"[AutoUpdater][Debug][SQLite] SQL => {compactSql}");
+            return;
+        }
+
+        logDebug($"[AutoUpdater][Debug][SQLite] SQL => {compactSql} | params: {parameters}");
+    }
+
+    private static void LogDebug(Action<string>? logDebug, string message)
+    {
+        logDebug?.Invoke(message);
+    }
+
+    private static DateTimeOffset ReadDateTimeOffset(SQLiteDataReader reader, int ordinal)
     {
         if (reader.IsDBNull(ordinal))
         {

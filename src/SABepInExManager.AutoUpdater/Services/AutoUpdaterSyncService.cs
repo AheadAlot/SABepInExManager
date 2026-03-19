@@ -14,10 +14,10 @@ namespace SABepInExManager.AutoUpdater.Services;
 
 public class AutoUpdaterSyncService
 {
-    private const string AutoUpdaterStateFolder = "SABepInExManager.AutoUpdater";
+    private const string AutoUpdaterStateDbFolder = "SABepInExManager_AutoUpdater";
+    private const string LegacyAutoUpdaterStateFolder = "SABepInExManager.AutoUpdater";
     private const string AutoUpdaterStateDbFileName = "state.db";
     private const string LegacyAutoUpdaterStateJsonFileName = "state.json";
-    private const string BackupSuffix = ".bak";
     private const string PreservedPluginDirectory = "ConfigurationManager";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -32,6 +32,7 @@ public class AutoUpdaterSyncService
     private readonly ManagedFileManifestService _managedFileManifestService = new();
     private readonly SignatureService _signatureService = new();
     private readonly AutoUpdaterSqliteStateStore _stateStore = new();
+    private bool _isDebugLoggingEnabled;
 
     public AutoUpdaterSyncService(ManualLogSource logger)
     {
@@ -46,12 +47,22 @@ public class AutoUpdaterSyncService
             return;
         }
 
+        _logger.LogInfo($"[AutoUpdater] 游戏根目录: {gameRoot}");
+
         var appState = LoadAppState(gameRoot!);
+        _isDebugLoggingEnabled = appState?.EnableDebugLogging ?? false;
+        LogDebug($"[AutoUpdater][Debug] Debug 日志开关: {_isDebugLoggingEnabled}");
         var enabledOrder = appState?.EnabledModIds
                            ?.Where(id => !string.IsNullOrWhiteSpace(id))
                            .Distinct(StringComparer.OrdinalIgnoreCase)
                            .ToList()
                        ?? [];
+
+        _logger.LogInfo(
+            $"[AutoUpdater] GUI state 已启用模组数量: {enabledOrder.Count}" +
+            (enabledOrder.Count > 0
+                ? $"，前几个: {string.Join(", ", enabledOrder.Take(5))}"
+                : string.Empty));
 
         if (enabledOrder.Count == 0)
         {
@@ -69,6 +80,7 @@ public class AutoUpdaterSyncService
         var workshopRoot = detectedWorkshopRoot;
 
         var discovered = _modDiscoveryService.ScanMods(workshopRoot!, enabledOrder);
+        LogDebug($"[AutoUpdater][Debug] Workshop 扫描结果: discovered={discovered.Count}, enabledOrder={enabledOrder.Count}");
         var discoveredMap = discovered.ToDictionary(x => x.ModId, x => x, StringComparer.OrdinalIgnoreCase);
         var enabledMods = enabledOrder
             .Where(id => discoveredMap.ContainsKey(id))
@@ -89,13 +101,16 @@ public class AutoUpdaterSyncService
         for (var i = 0; i < enabledMods.Count; i++)
         {
             var mod = enabledMods[i];
-            var entries = _managedFileManifestService.BuildEntries(mod);
-            newEntries[mod.ModId] = entries;
-            autoUpdaterState.Mods.TryGetValue(mod.ModId, out var oldModState);
-            var computed = BuildManagedSignatureWithCache(entries, oldModState);
-            newSignatures[mod.ModId] = computed.Signature;
-            newCaches[mod.ModId] = computed.CachedFiles;
-        }
+                var entries = _managedFileManifestService.BuildEntries(mod);
+                LogDebug($"[AutoUpdater][Debug] [{mod.ModId}] managed entries: {entries.Count}");
+                newEntries[mod.ModId] = entries;
+                autoUpdaterState.Mods.TryGetValue(mod.ModId, out var oldModState);
+                var computed = BuildManagedSignatureWithCache(entries, oldModState);
+                newSignatures[mod.ModId] = computed.Signature;
+                newCaches[mod.ModId] = computed.CachedFiles;
+                LogDebug(
+                    $"[AutoUpdater][Debug] [{mod.ModId}] 签名计算完成: new={ShortHash(computed.Signature)}, old={ShortHash(oldModState?.Signature ?? string.Empty)}");
+            }
 
         var firstChangedIndex = -1;
         for (var i = 0; i < enabledMods.Count; i++)
@@ -104,6 +119,8 @@ public class AutoUpdaterSyncService
             autoUpdaterState.Mods.TryGetValue(mod.ModId, out var oldModState);
             var changed = oldModState == null
                           || !string.Equals(oldModState.Signature, newSignatures[mod.ModId], StringComparison.Ordinal);
+            LogDebug(
+                $"[AutoUpdater][Debug] [{mod.ModId}] SHA-256签名比对: old={ShortHash(oldModState?.Signature ?? string.Empty)}, new={ShortHash(newSignatures[mod.ModId])}, changed={changed}");
             if (changed)
             {
                 firstChangedIndex = i;
@@ -113,6 +130,7 @@ public class AutoUpdaterSyncService
 
         if (firstChangedIndex < 0)
         {
+            LogDebug("[AutoUpdater][Debug] 启用模组签名无变化，检查 cache 写回。 ");
             var cacheUpdated = false;
             for (var i = 0; i < enabledMods.Count; i++)
             {
@@ -125,12 +143,14 @@ public class AutoUpdaterSyncService
 
                 if (!NeedsCacheWrite(oldModState, newCaches[mod.ModId]))
                 {
+                    LogDebug($"[AutoUpdater][Debug] [{mod.ModId}] 缓存内容一致，无需写回 SQLite。");
                     continue;
                 }
 
                 oldModState.Signature = newSignatures[mod.ModId];
                 oldModState.CachedFiles = newCaches[mod.ModId];
                 cacheUpdated = true;
+                LogDebug($"[AutoUpdater][Debug] [{mod.ModId}] 缓存变化已写入内存状态，待保存到 SQLite。");
             }
 
             if (cacheUpdated)
@@ -149,6 +169,7 @@ public class AutoUpdaterSyncService
         var gameBepInExRoot = Path.Combine(gameRoot, "BepInEx");
         var selfAssemblyPath = Path.GetFullPath(GetType().Assembly.Location);
         var now = DateTimeOffset.Now;
+        LogDebug($"[AutoUpdater][Debug] 将开始重放同步: firstChangedIndex={firstChangedIndex}, bepinexRoot={gameBepInExRoot}");
 
         for (var i = firstChangedIndex; i < enabledMods.Count; i++)
         {
@@ -193,33 +214,47 @@ public class AutoUpdaterSyncService
         var workshopContentPath = appState?.WorkshopContentPath;
         if (!string.IsNullOrWhiteSpace(workshopContentPath) && Directory.Exists(workshopContentPath))
         {
+            _logger.LogInfo($"[AutoUpdater] 使用 GUI state 中的 Workshop 路径: {workshopContentPath}");
             return workshopContentPath;
         }
 
-        return _workshopPathResolver.AutoDetectWorkshopPath(gameRoot);
+        if (!string.IsNullOrWhiteSpace(workshopContentPath))
+        {
+            _logger.LogInfo($"[AutoUpdater] GUI state 中的 Workshop 路径无效，尝试自动检测: {workshopContentPath}");
+        }
+
+        var autoDetected = _workshopPathResolver.AutoDetectWorkshopPath(gameRoot);
+        _logger.LogInfo($"[AutoUpdater] 自动检测 Workshop 路径结果: {autoDetected}");
+
+        return autoDetected;
     }
 
     private static string GetGuiStatePath(string gameRoot)
-        => Path.Combine(gameRoot, PathConstants.StateRootFolder, PathConstants.StateFileName);
+        => Path.Combine(gameRoot, "BepInEx", "config", PathConstants.ManagerConfigFolder, PathConstants.StateFileName);
 
     private static string GetAutoUpdaterStateDbPath(string gameRoot)
-        => Path.Combine(gameRoot, "BepInEx", "config", AutoUpdaterStateFolder, AutoUpdaterStateDbFileName);
+        => Path.Combine(gameRoot, "BepInEx", "patchers", AutoUpdaterStateDbFolder, AutoUpdaterStateDbFileName);
 
     private static string GetLegacyAutoUpdaterStateJsonPath(string gameRoot)
-        => Path.Combine(gameRoot, "BepInEx", "config", AutoUpdaterStateFolder, LegacyAutoUpdaterStateJsonFileName);
+        => Path.Combine(gameRoot, "BepInEx", "config", LegacyAutoUpdaterStateFolder, LegacyAutoUpdaterStateJsonFileName);
 
     private AppStateLite? LoadAppState(string gameRoot)
     {
         var path = GetGuiStatePath(gameRoot);
+        _logger.LogInfo($"[AutoUpdater] GUI state 路径: {path}");
         if (!File.Exists(path))
         {
+            _logger.LogInfo("[AutoUpdater] GUI state 文件不存在。");
             return null;
         }
 
         try
         {
             var json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<AppStateLite>(json, JsonOptions);
+            var state = JsonSerializer.Deserialize<AppStateLite>(json, JsonOptions);
+            var enabledCount = state?.EnabledModIds?.Count ?? 0;
+            _logger.LogInfo($"[AutoUpdater] GUI state 读取成功，EnabledModIds 原始数量: {enabledCount}");
+            return state;
         }
         catch (Exception ex)
         {
@@ -241,11 +276,12 @@ public class AutoUpdaterSyncService
                 if (legacyState != null)
                 {
                     _stateStore.Save(dbPath, legacyState);
-                    BackupLegacyJsonState(legacyJsonPath);
+                    DeleteLegacyJsonStateDirectory(legacyJsonPath);
                 }
             }
 
-            var state = _stateStore.Load(dbPath);
+            var state = _stateStore.Load(dbPath, LogDebug);
+            LogDebug($"[AutoUpdater][Debug] SQLite 状态读取完成: dbPath={dbPath}, mods={state.Mods.Count}");
             return EnsureStateDefaults(state);
         }
         catch (Exception ex)
@@ -280,18 +316,23 @@ public class AutoUpdaterSyncService
         }
     }
 
-    private void BackupLegacyJsonState(string legacyJsonPath)
+    private void DeleteLegacyJsonStateDirectory(string legacyJsonPath)
     {
         try
         {
-            var backupPath = legacyJsonPath + BackupSuffix;
-            File.Copy(legacyJsonPath, backupPath, overwrite: true);
-            File.Delete(legacyJsonPath);
-            _logger.LogInfo($"[AutoUpdater] 已完成 state.json -> SQLite 迁移，备份文件: {backupPath}");
+            var legacyFolderPath = Path.GetDirectoryName(legacyJsonPath);
+            if (string.IsNullOrWhiteSpace(legacyFolderPath) || !Directory.Exists(legacyFolderPath))
+            {
+                _logger.LogInfo("[AutoUpdater] 已完成 state.json -> SQLite 迁移，旧目录不存在或无效，跳过清理。 ");
+                return;
+            }
+
+            Directory.Delete(legacyFolderPath, recursive: true);
+            _logger.LogInfo($"[AutoUpdater] 已完成 state.json -> SQLite 迁移，并删除旧目录: {legacyFolderPath}");
         }
         catch (Exception ex)
         {
-            _logger.LogWarning($"[AutoUpdater] 迁移后备份旧 state.json 失败: {ex.Message}");
+            _logger.LogWarning($"[AutoUpdater] 迁移后删除旧目录失败: {ex.Message}");
         }
     }
 
@@ -301,7 +342,8 @@ public class AutoUpdaterSyncService
 
         try
         {
-            _stateStore.Save(dbPath, EnsureStateDefaults(state));
+            _stateStore.Save(dbPath, EnsureStateDefaults(state), LogDebug);
+            LogDebug($"[AutoUpdater][Debug] SQLite 状态写入完成: dbPath={dbPath}, mods={state.Mods.Count}");
         }
         catch (Exception ex)
         {
@@ -364,9 +406,12 @@ public class AutoUpdaterSyncService
             var lastWrite = new DateTimeOffset(fileInfo.LastWriteTimeUtc, TimeSpan.Zero);
 
             var cachedHash = TryGetCachedHash(oldCache, target, fullSourcePath, fileInfo.Length, lastWrite);
-            var hash = string.IsNullOrWhiteSpace(cachedHash)
-                ? _signatureService.ComputeFileSha256Hex(fullSourcePath)
-                : cachedHash;
+            var cacheHit = !string.IsNullOrWhiteSpace(cachedHash);
+            var hash = cacheHit
+                ? cachedHash
+                : _signatureService.ComputeFileSha256Hex(fullSourcePath);
+            LogDebug(
+                $"[AutoUpdater][Debug] SHA-256文件摘要: target={target}, source={fullSourcePath}, cacheHit={cacheHit}, hash={ShortHash(hash ?? string.Empty)}, len={fileInfo.Length}, lastWriteUtc={lastWrite:O}");
 
             builder.Append(target)
                 .Append('|')
@@ -379,11 +424,13 @@ public class AutoUpdaterSyncService
                 IsDirectory = false,
                 Length = fileInfo.Length,
                 LastWriteTimeUtc = lastWrite,
-                ContentHash = hash,
+                ContentHash = hash ?? string.Empty,
             };
         }
 
-        return (_signatureService.ComputeUtf8Sha256Hex(builder.ToString()), newCache);
+        var signature = _signatureService.ComputeUtf8Sha256Hex(builder.ToString());
+        LogDebug($"[AutoUpdater][Debug] SHA-256聚合签名: entries={newCache.Count}, signature={ShortHash(signature)}");
+        return (signature, newCache);
     }
 
     private static string? TryGetCachedHash(
@@ -446,5 +493,23 @@ public class AutoUpdaterSyncService
 
     private static string NormalizeRelativePath(string path)
         => path.Replace('\\', '/').TrimStart('/');
+
+    private static string ShortHash(string hash)
+    {
+        if (string.IsNullOrWhiteSpace(hash))
+        {
+            return "<empty>";
+        }
+
+        return hash.Length <= 12 ? hash : hash.Substring(0, 12);
+    }
+
+    private void LogDebug(string message)
+    {
+        if (_isDebugLoggingEnabled)
+        {
+            _logger.LogInfo(message);
+        }
+    }
 }
 

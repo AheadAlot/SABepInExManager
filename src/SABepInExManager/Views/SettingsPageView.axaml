@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SABepInExManager.ViewModels"
+             x:Class="SABepInExManager.Views.SettingsPageView"
+             x:DataType="vm:SettingsPageViewModel">
+
+    <Grid Margin="12" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
+        <TextBlock Text="设置" FontSize="22" FontWeight="Bold"/>
+
+        <Border Grid.Row="1" Classes="card">
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+                <TextBlock Text="路径设置" FontSize="16" FontWeight="Bold"/>
+                <TextBlock Grid.Row="1" Text="游戏根目录" FontWeight="SemiBold"/>
+                <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBox Watermark="例如: D:\SteamLibrary\steamapps\common\StudentAge"
+                             Text="{Binding HomePage.GameRootPath}"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                        <Button Classes="action-button secondary-action"
+                                Content="选择文件夹"
+                                Click="OnPickGameRootFolderClicked"/>
+                        <Button Classes="action-button primary-action"
+                                Content="自动探测"
+                                Command="{Binding HomePage.DetectGameRootPathCommand}"/>
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Grid.Row="3" Text="创意工坊路径" FontWeight="SemiBold"/>
+                <Grid Grid.Row="4" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBox Watermark="例如: D:\SteamLibrary\steamapps\workshop\content\1991040"
+                             Text="{Binding HomePage.WorkshopContentPath}"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                        <Button Classes="action-button secondary-action"
+                                Content="选择文件夹"
+                                Click="OnPickWorkshopFolderClicked"/>
+                        <Button Classes="action-button primary-action"
+                                Content="自动探测"
+                                Command="{Binding HomePage.DetectWorkshopPathCommand}"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Classes="card">
+            <StackPanel Spacing="10">
+                <TextBlock Text="高级设置" FontWeight="SemiBold"/>
+                <TextBlock Text="以下操作会直接修改本地数据，请谨慎操作。" Classes="secondary-text"/>
+                <CheckBox Content="开启 Debug 日志（关闭时不记录/不显示 Debug 日志）"
+                          IsChecked="{Binding HomePage.EnableDebugLogging}"/>
+                <StackPanel Orientation="Vertical" Spacing="8">
+                    <Button Classes="action-button secondary-action"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Content="清空模组版本缓存"
+                            Click="OnClearModVersionCacheClicked"/>
+                    <Button Classes="action-button danger-action"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Content="重新安装BepInEx"
+                            Click="OnReinstallBepInExClicked"/>
+                    <Button Classes="action-button danger-action"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Content="删除所有备份"
+                            Click="OnDeleteAllBackupsClicked"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>
+

@@ -139,7 +139,7 @@ public class ModApplyServiceTests
         fx.WriteText("game/BepInEx/patchers/base.patch", patchV1);
         fx.WriteText("game/BepInEx/plugins/ConfigurationManager/preserved.cfg", preservedBefore);
 
-        service.CreateOrUpdateBaseline(gameRoot);
+        service.CreateBaseline(gameRoot);
 
         fx.WriteText("game/BepInEx/plugins/base.dll", baseDllV2);
         fx.WriteText("game/BepInEx/plugins/extra.dll", extra);
