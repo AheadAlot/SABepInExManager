@@ -102,14 +102,16 @@ public class AutoUpdaterSyncService
         for (var i = 0; i < enabledMods.Count; i++)
         {
             var mod = enabledMods[i];
-            var entries = _managedFileManifestService.BuildEntries(mod);
-            LogDebug($"[AutoUpdater][Debug] [{mod.ModId}] managed entries: {entries.Count}");
-            newEntries[mod.ModId] = entries;
-            autoUpdaterState.Mods.TryGetValue(mod.ModId, out var oldModState);
-            var computed = BuildManagedSignatureWithCache(entries, oldModState);
-            newSignatures[mod.ModId] = computed.Signature;
-            newCaches[mod.ModId] = computed.CachedFiles;
-        }
+                var entries = _managedFileManifestService.BuildEntries(mod);
+                LogDebug($"[AutoUpdater][Debug] [{mod.ModId}] managed entries: {entries.Count}");
+                newEntries[mod.ModId] = entries;
+                autoUpdaterState.Mods.TryGetValue(mod.ModId, out var oldModState);
+                var computed = BuildManagedSignatureWithCache(entries, oldModState);
+                newSignatures[mod.ModId] = computed.Signature;
+                newCaches[mod.ModId] = computed.CachedFiles;
+                LogDebug(
+                    $"[AutoUpdater][Debug] [{mod.ModId}] 签名计算完成: new={ShortHash(computed.Signature)}, old={ShortHash(oldModState?.Signature ?? string.Empty)}");
+            }
 
         var firstChangedIndex = -1;
         for (var i = 0; i < enabledMods.Count; i++)
@@ -118,6 +120,8 @@ public class AutoUpdaterSyncService
             autoUpdaterState.Mods.TryGetValue(mod.ModId, out var oldModState);
             var changed = oldModState == null
                           || !string.Equals(oldModState.Signature, newSignatures[mod.ModId], StringComparison.Ordinal);
+            LogDebug(
+                $"[AutoUpdater][Debug] [{mod.ModId}] SHA-256签名比对: old={ShortHash(oldModState?.Signature ?? string.Empty)}, new={ShortHash(newSignatures[mod.ModId])}, changed={changed}");
             if (changed)
             {
                 firstChangedIndex = i;
@@ -140,12 +144,14 @@ public class AutoUpdaterSyncService
 
                 if (!NeedsCacheWrite(oldModState, newCaches[mod.ModId]))
                 {
+                    LogDebug($"[AutoUpdater][Debug] [{mod.ModId}] 缓存内容一致，无需写回 SQLite。");
                     continue;
                 }
 
                 oldModState.Signature = newSignatures[mod.ModId];
                 oldModState.CachedFiles = newCaches[mod.ModId];
                 cacheUpdated = true;
+                LogDebug($"[AutoUpdater][Debug] [{mod.ModId}] 缓存变化已写入内存状态，待保存到 SQLite。");
             }
 
             if (cacheUpdated)
@@ -275,7 +281,8 @@ public class AutoUpdaterSyncService
                 }
             }
 
-            var state = _stateStore.Load(dbPath);
+            var state = _stateStore.Load(dbPath, LogDebug);
+            LogDebug($"[AutoUpdater][Debug] SQLite 状态读取完成: dbPath={dbPath}, mods={state.Mods.Count}");
             return EnsureStateDefaults(state);
         }
         catch (Exception ex)
@@ -331,7 +338,8 @@ public class AutoUpdaterSyncService
 
         try
         {
-            _stateStore.Save(dbPath, EnsureStateDefaults(state));
+            _stateStore.Save(dbPath, EnsureStateDefaults(state), LogDebug);
+            LogDebug($"[AutoUpdater][Debug] SQLite 状态写入完成: dbPath={dbPath}, mods={state.Mods.Count}");
         }
         catch (Exception ex)
         {
@@ -394,9 +402,12 @@ public class AutoUpdaterSyncService
             var lastWrite = new DateTimeOffset(fileInfo.LastWriteTimeUtc, TimeSpan.Zero);
 
             var cachedHash = TryGetCachedHash(oldCache, target, fullSourcePath, fileInfo.Length, lastWrite);
-            var hash = string.IsNullOrWhiteSpace(cachedHash)
-                ? _signatureService.ComputeFileSha256Hex(fullSourcePath)
-                : cachedHash;
+            var cacheHit = !string.IsNullOrWhiteSpace(cachedHash);
+            var hash = cacheHit
+                ? cachedHash
+                : _signatureService.ComputeFileSha256Hex(fullSourcePath);
+            LogDebug(
+                $"[AutoUpdater][Debug] SHA-256文件摘要: target={target}, source={fullSourcePath}, cacheHit={cacheHit}, hash={ShortHash(hash ?? string.Empty)}, len={fileInfo.Length}, lastWriteUtc={lastWrite:O}");
 
             builder.Append(target)
                 .Append('|')
@@ -413,7 +424,9 @@ public class AutoUpdaterSyncService
             };
         }
 
-        return (_signatureService.ComputeUtf8Sha256Hex(builder.ToString()), newCache);
+        var signature = _signatureService.ComputeUtf8Sha256Hex(builder.ToString());
+        LogDebug($"[AutoUpdater][Debug] SHA-256聚合签名: entries={newCache.Count}, signature={ShortHash(signature)}");
+        return (signature, newCache);
     }
 
     private static string? TryGetCachedHash(
@@ -476,6 +489,16 @@ public class AutoUpdaterSyncService
 
     private static string NormalizeRelativePath(string path)
         => path.Replace('\\', '/').TrimStart('/');
+
+    private static string ShortHash(string hash)
+    {
+        if (string.IsNullOrWhiteSpace(hash))
+        {
+            return "<empty>";
+        }
+
+        return hash.Length <= 12 ? hash : hash.Substring(0, 12);
+    }
 
     private void LogDebug(string message)
     {
