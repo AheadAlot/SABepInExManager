@@ -793,6 +793,13 @@ public class HomePageViewModel : ViewModelBase
             var result = forceReinstall
                 ? await _bepInExService.ReinstallAsync(GameRootPath, message => AppendLog(message))
                 : await _bepInExService.InstallFromGitHubAsync(GameRootPath, message => AppendLog(message));
+
+            if (forceReinstall && result.Success)
+            {
+                ResetModStateToInitial();
+                await RefreshModsAsync();
+            }
+
             AppendLog(result.Message);
             AppendDebugLog($"BepInEx 安装流程结束：success={result.Success}", reset: false);
         }
@@ -803,6 +810,16 @@ public class HomePageViewModel : ViewModelBase
 
         CheckBepInExStatus();
         await SaveConfigAsync();
+    }
+
+    private void ResetModStateToInitial()
+    {
+        var existingState = _modApplyService.LoadState(GameRootPath) ?? new AppState();
+        existingState.EnabledModIds = [];
+        existingState.WorkshopContentPath = WorkshopContentPath;
+        existingState.EnableDebugLogging = EnableDebugLogging;
+        _modApplyService.SaveState(GameRootPath, existingState);
+        AppendDebugLog("重装成功后已重置 Mod 启用状态与顺序到初始状态。", reset: false);
     }
 
     private void OpenSelectedModFolder()
