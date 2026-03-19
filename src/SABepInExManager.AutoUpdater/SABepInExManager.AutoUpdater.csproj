@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.119" />
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
 
@@ -59,9 +59,19 @@
 
     <MakeDir Condition="'$(DeployToGame)' == 'true'" Directories="$(BepInExDir)\..\patchers\SABepInExManager_AutoUpdater" />
     <Delete Condition="'$(DeployToGame)' == 'true'" Files="@(_GamePdbFiles)" />
+    <MakeDir Condition="'$(DeployToGame)' == 'true'" Directories="$(BepInExDir)\..\patchers\SABepInExManager_AutoUpdater\x86" />
+    <MakeDir Condition="'$(DeployToGame)' == 'true'" Directories="$(BepInExDir)\..\patchers\SABepInExManager_AutoUpdater\x64" />
     <Copy Condition="'$(DeployToGame)' == 'true'"
           SourceFiles="@(_PatcherCopyFiles)"
           DestinationFolder="$(BepInExDir)\..\patchers\SABepInExManager_AutoUpdater"
+          SkipUnchangedFiles="true" />
+    <Copy Condition="'$(DeployToGame)' == 'true' and Exists('$(TargetDir)x86\SQLite.Interop.dll')"
+          SourceFiles="$(TargetDir)x86\SQLite.Interop.dll"
+          DestinationFiles="$(BepInExDir)\..\patchers\SABepInExManager_AutoUpdater\x86\SQLite.Interop.dll"
+          SkipUnchangedFiles="true" />
+    <Copy Condition="'$(DeployToGame)' == 'true' and Exists('$(TargetDir)x64\SQLite.Interop.dll')"
+          SourceFiles="$(TargetDir)x64\SQLite.Interop.dll"
+          DestinationFiles="$(BepInExDir)\..\patchers\SABepInExManager_AutoUpdater\x64\SQLite.Interop.dll"
           SkipUnchangedFiles="true" />
   </Target>
 </Project>

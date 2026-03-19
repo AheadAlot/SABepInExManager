@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Data;
-using Microsoft.Data.Sqlite;
+using System.Data.SQLite;
 using SABepInExManager.Core.Models;
 
 namespace SABepInExManager.Core.Services;
@@ -226,9 +226,9 @@ public sealed class AutoUpdaterSqliteStateStore
         );
     }
 
-    private static SqliteConnection CreateOpenConnection(string dbPath)
+    private static SQLiteConnection CreateOpenConnection(string dbPath)
     {
-        var connection = new SqliteConnection($"Data Source={dbPath};Mode=ReadWriteCreate;Cache=Shared");
+        var connection = new SQLiteConnection($"Data Source={dbPath};Version=3;Foreign Keys=True;");
         connection.Open();
 
         using var pragma = connection.CreateCommand();
@@ -238,19 +238,24 @@ public sealed class AutoUpdaterSqliteStateStore
         return connection;
     }
 
-    private static void UpsertMeta(SqliteConnection connection, SqliteTransaction transaction, string key, string value)
+    private static void UpsertMeta(SQLiteConnection connection, SQLiteTransaction transaction, string key, string value)
     {
         using var cmd = connection.CreateCommand();
         cmd.Transaction = transaction;
         cmd.CommandText =
-            "INSERT INTO auto_updater_meta (key, value) VALUES (@key, @value) " +
-            "ON CONFLICT(key) DO UPDATE SET value=excluded.value;";
+            "UPDATE auto_updater_meta SET value = @value WHERE key = @key;";
         cmd.Parameters.AddWithValue("@key", key);
         cmd.Parameters.AddWithValue("@value", value);
-        cmd.ExecuteNonQuery();
+        var affected = cmd.ExecuteNonQuery();
+
+        if (affected == 0)
+        {
+            cmd.CommandText = "INSERT INTO auto_updater_meta (key, value) VALUES (@key, @value);";
+            cmd.ExecuteNonQuery();
+        }
     }
 
-    private static void ExecuteNonQuery(SqliteConnection connection, SqliteTransaction? transaction, string sql)
+    private static void ExecuteNonQuery(SQLiteConnection connection, SQLiteTransaction? transaction, string sql)
     {
         using var cmd = connection.CreateCommand();
         cmd.Transaction = transaction;
@@ -258,7 +263,7 @@ public sealed class AutoUpdaterSqliteStateStore
         cmd.ExecuteNonQuery();
     }
 
-    private static DateTimeOffset ReadDateTimeOffset(SqliteDataReader reader, int ordinal)
+    private static DateTimeOffset ReadDateTimeOffset(SQLiteDataReader reader, int ordinal)
     {
         if (reader.IsDBNull(ordinal))
         {
