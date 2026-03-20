@@ -3,6 +3,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using FluentIcons.Avalonia;
+using FluentIcons.Common;
 
 namespace SABepInExManager.Services;
 
@@ -12,9 +14,11 @@ public sealed class DialogService
     {
         var tcs = new TaskCompletionSource<bool>();
 
-        var iconBlock = new TextBlock
+        var iconBlock = new SymbolIcon
         {
-            Text = options.IsDangerous ? "⚠" : "ℹ",
+            Symbol = Symbol.Warning,
+            FontSize = 20,
+            VerticalAlignment = VerticalAlignment.Center,
             Classes = { "dialog-danger-icon" },
             IsVisible = options.IsDangerous,
         };

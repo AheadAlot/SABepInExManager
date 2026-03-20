@@ -1,24 +1,91 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:SABepInExManager.ViewModels"
+             xmlns:icons="using:FluentIcons.Avalonia"
              x:Class="SABepInExManager.Views.AboutPageView"
              x:DataType="vm:AboutPageViewModel">
 
-    <Grid Margin="12" RowDefinitions="Auto,Auto,*" RowSpacing="12">
-        <TextBlock Text="关于" FontSize="22" FontWeight="Bold"/>
+    <StackPanel Margin="0" Spacing="12" HorizontalAlignment="Stretch">
+        <Expander Classes="settings-expander" IsExpanded="True" HorizontalAlignment="Stretch">
+            <Expander.Header>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <icons:SymbolIcon Symbol="Info" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                    <TextBlock Text="软件信息" Classes="settings-expander-title" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Expander.Header>
 
-        <Border Grid.Row="1" Classes="card">
-            <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
-                <TextBlock Text="{Binding AppName}" FontSize="18" FontWeight="Bold"/>
-                <TextBlock Grid.Row="1" Text="{Binding Description}" Classes="secondary-text"/>
-                <TextBlock Grid.Row="2" Text="{Binding License, StringFormat=License：{0}}"/>
-                <TextBlock Grid.Row="3" Text="{Binding RepositoryUrl, StringFormat=GitHub：{0}}" Classes="secondary-text"/>
-            </Grid>
-        </Border>
+            <Border Classes="settings-expander-content">
+                <StackPanel Spacing="0">
+                    <Border Classes="setting-dropdown-row first">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <icons:SymbolIcon Symbol="Apps" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="应用名称" Classes="setting-title"/>
+                                <TextBlock Text="{Binding AppName}" Classes="setting-desc"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-        <Border Grid.Row="2" Classes="card">
-            <TextBlock Text="技术栈：AvaloniaUI · .NET · CommunityToolkit.Mvvm" Classes="secondary-text"/>
-        </Border>
-    </Grid>
+                    <Border Classes="setting-dropdown-row">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <icons:SymbolIcon Symbol="Tag" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="版本号" Classes="setting-title"/>
+                                <TextBlock Text="{Binding AppVersion}" Classes="setting-desc"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Classes="setting-dropdown-row">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <icons:SymbolIcon Symbol="Link" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="仓库地址" Classes="setting-title"/>
+                                <TextBlock Text="{Binding RepositoryUrl}" Classes="setting-desc"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Classes="setting-dropdown-row">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <icons:SymbolIcon Symbol="DocumentText" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="许可证类型" Classes="setting-title"/>
+                                <TextBlock Text="{Binding License}" Classes="setting-desc"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </Expander>
+
+        <Expander Classes="settings-expander" IsExpanded="True" HorizontalAlignment="Stretch">
+            <Expander.Header>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <icons:SymbolIcon Symbol="Code" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                    <TextBlock Text="三方库与服务" Classes="settings-expander-title" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Expander.Header>
+
+            <Border Classes="settings-expander-content">
+                <ItemsControl ItemsSource="{Binding ThirdPartyItems}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ThirdPartyComponentInfo">
+                            <Border Classes="setting-dropdown-row">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                                    <icons:SymbolIcon Symbol="PuzzlePiece" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                                    <StackPanel Grid.Column="1" Spacing="2">
+                                        <TextBlock Text="{Binding Name}" Classes="setting-title"/>
+                                        <TextBlock Text="{Binding Info}" Classes="setting-desc"/>
+                                        <TextBlock Text="{Binding License, StringFormat=许可证：{0}}" Classes="setting-desc"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+        </Expander>
+    </StackPanel>
 </UserControl>
 

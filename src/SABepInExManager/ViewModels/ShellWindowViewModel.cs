@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
+using FluentIcons.Common;
 using SABepInExManager.Models;
 
 namespace SABepInExManager.ViewModels;
@@ -19,6 +20,7 @@ public class ShellWindowViewModel : ViewModelBase
 
     private NavigationItemViewModel? _selectedNavigationItem;
     private ViewModelBase? _currentPageViewModel;
+    private string _currentPageTitle = "设置";
     private string _globalStatusText = "就绪。";
 
     public ShellWindowViewModel()
@@ -33,13 +35,13 @@ public class ShellWindowViewModel : ViewModelBase
 
         NavigationItems =
         [
-            new NavigationItemViewModel("home", "主页", "🏠", _homeDashboardViewModel),
-            new NavigationItemViewModel("mods", "Mod 管理", "🧩", _modsPageViewModel),
-            new NavigationItemViewModel("conflicts", "冲突预览", "⚠️", _conflictsPageViewModel),
-            new NavigationItemViewModel("backup", "备份与恢复", "🗂️", _backupPageViewModel),
-            new NavigationItemViewModel("logs", "日志", "📜", _logsPageViewModel),
-            new NavigationItemViewModel("settings", "设置", "⚙️", _settingsPageViewModel),
-            new NavigationItemViewModel("about", "关于", "ℹ️", _aboutPageViewModel),
+            new NavigationItemViewModel("home", "主页", Symbol.Home, _homeDashboardViewModel),
+            new NavigationItemViewModel("mods", "Mod 管理", Symbol.PuzzlePiece, _modsPageViewModel),
+            new NavigationItemViewModel("conflicts", "冲突预览", Symbol.Warning, _conflictsPageViewModel),
+            new NavigationItemViewModel("backup", "备份与恢复", Symbol.FolderOpen, _backupPageViewModel),
+            new NavigationItemViewModel("logs", "日志", Symbol.Notebook, _logsPageViewModel),
+            new NavigationItemViewModel("settings", "设置", Symbol.Settings, _settingsPageViewModel),
+            new NavigationItemViewModel("about", "关于", Symbol.Info, _aboutPageViewModel),
         ];
 
         SelectedNavigationItem = NavigationItems[0];
@@ -62,9 +64,16 @@ public class ShellWindowViewModel : ViewModelBase
         {
             if (SetProperty(ref _selectedNavigationItem, value) && value is not null)
             {
+                CurrentPageTitle = value.Title;
                 CurrentPageViewModel = value.PageViewModel;
             }
         }
+    }
+
+    public string CurrentPageTitle
+    {
+        get => _currentPageTitle;
+        private set => SetProperty(ref _currentPageTitle, value);
     }
 
     public ViewModelBase? CurrentPageViewModel

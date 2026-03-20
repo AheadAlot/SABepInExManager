@@ -11,6 +11,45 @@ public static class AutoUpdaterFileSyncEngine
 {
     private const string PreservedPluginDirectory = "ConfigurationManager";
 
+    public static int CleanupDisabledMods(
+        string gameBepInExRoot,
+        string selfAssemblyPath,
+        IDictionary<string, AutoUpdaterModState> stateMods,
+        IEnumerable<string> enabledModIds,
+        DateTimeOffset now,
+        Action<string>? logInfo = null,
+        Action<string>? logDebug = null,
+        Action<string>? logWarning = null)
+    {
+        var enabledSet = new HashSet<string>(enabledModIds ?? [], StringComparer.OrdinalIgnoreCase);
+        var disabledModIds = stateMods.Keys
+            .Where(modId => !enabledSet.Contains(modId))
+            .ToList();
+
+        foreach (var disabledModId in disabledModIds)
+        {
+            stateMods.TryGetValue(disabledModId, out var oldModState);
+            var deletedFileCount = 0;
+
+            _ = SyncSingleMod(
+                gameBepInExRoot,
+                selfAssemblyPath,
+                disabledModId,
+                entries: [],
+                oldModState: oldModState,
+                now: now,
+                logInfo: logInfo,
+                logDebug: logDebug,
+                onDeletedFileCount: count => deletedFileCount = count,
+                logWarning: logWarning);
+
+            stateMods.Remove(disabledModId);
+            logInfo?.Invoke($"[AutoUpdater] [{disabledModId}] 已禁用，已删除 {deletedFileCount} 个文件并移除状态记录。");
+        }
+
+        return disabledModIds.Count;
+    }
+
     public static AutoUpdaterModState SyncSingleMod(
         string gameBepInExRoot,
         string selfAssemblyPath,
@@ -19,10 +58,13 @@ public static class AutoUpdaterFileSyncEngine
         AutoUpdaterModState? oldModState,
         DateTimeOffset now,
         Action<string>? logInfo = null,
+        Action<string>? logDebug = null,
+        Action<int>? onDeletedFileCount = null,
         Action<string>? logWarning = null)
     {
         var targetSet = new HashSet<string>(entries.Select(x => NormalizeRelativePath(x.TargetRelativePath)), StringComparer.OrdinalIgnoreCase);
         var oldFiles = oldModState?.Files ?? [];
+        var deletedFileCount = 0;
 
         foreach (var oldFile in oldFiles)
         {
@@ -47,7 +89,8 @@ public static class AutoUpdaterFileSyncEngine
                 if (File.Exists(deletePath))
                 {
                     File.Delete(deletePath);
-                    logInfo?.Invoke($"[AutoUpdater] [{modId}] 删除旧文件: {normalized}");
+                    deletedFileCount++;
+                    logDebug?.Invoke($"[AutoUpdater][Debug] [{modId}] 删除旧文件: {normalized}");
                 }
             }
             catch (Exception ex)
@@ -55,6 +98,8 @@ public static class AutoUpdaterFileSyncEngine
                 logWarning?.Invoke($"[AutoUpdater] [{modId}] 删除失败: {normalized} | {ex.Message}");
             }
         }
+
+        onDeletedFileCount?.Invoke(deletedFileCount);
 
         foreach (var entry in entries)
         {

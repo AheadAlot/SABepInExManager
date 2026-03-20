@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using SABepInExManager.Services;
 using SABepInExManager.ViewModels;
+using System.Linq;
 
 namespace SABepInExManager.Views;
 
@@ -11,6 +12,42 @@ public partial class BackupPageView : UserControl
     public BackupPageView()
     {
         InitializeComponent();
+    }
+
+    private async void OnRestoreLatestSnapshotClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (DataContext is not BackupPageViewModel vm)
+        {
+            return;
+        }
+
+        var latestFolderName = vm.Snapshots.FirstOrDefault()?.FolderName;
+        if (string.IsNullOrWhiteSpace(latestFolderName))
+        {
+            return;
+        }
+
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner is null)
+        {
+            return;
+        }
+
+        var confirmed = await _dialogService.ShowConfirmAsync(owner, new ConfirmDialogOptions
+        {
+            Title = "确认恢复最近备份",
+            Message = $"将恢复最近一次备份目录 {latestFolderName}，该操作会覆盖当前 BepInEx 管理目录中的文件。是否继续？",
+            ConfirmText = "确认恢复",
+            IsDangerous = true,
+            WarningHint = "恢复后当前已应用的改动可能被覆盖。",
+        });
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        await vm.RestoreSnapshotAsync(latestFolderName);
     }
 
     private async void OnRestoreSnapshotClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)

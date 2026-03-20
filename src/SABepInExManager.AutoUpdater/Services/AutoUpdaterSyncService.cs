@@ -18,8 +18,6 @@ public class AutoUpdaterSyncService
     private const string LegacyAutoUpdaterStateFolder = "SABepInExManager.AutoUpdater";
     private const string AutoUpdaterStateDbFileName = "state.db";
     private const string LegacyAutoUpdaterStateJsonFileName = "state.json";
-    private const string PreservedPluginDirectory = "ConfigurationManager";
-
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -112,6 +110,25 @@ public class AutoUpdaterSyncService
                     $"[AutoUpdater][Debug] [{mod.ModId}] 签名计算完成: new={ShortHash(computed.Signature)}, old={ShortHash(oldModState?.Signature ?? string.Empty)}");
             }
 
+        var gameBepInExRoot = Path.Combine(gameRoot, "BepInEx");
+        var selfAssemblyPath = Path.GetFullPath(GetType().Assembly.Location);
+        var now = DateTimeOffset.Now;
+
+        var removedDisabledMods = AutoUpdaterFileSyncEngine.CleanupDisabledMods(
+            gameBepInExRoot,
+            selfAssemblyPath,
+            autoUpdaterState.Mods,
+            enabledMods.Select(x => x.ModId),
+            now,
+            logInfo: message => _logger.LogInfo(message),
+            logDebug: message => LogDebug(message),
+            logWarning: message => _logger.LogWarning(message));
+
+        if (removedDisabledMods > 0)
+        {
+            LogDebug($"[AutoUpdater][Debug] 已清理 {removedDisabledMods} 个禁用模组的残留文件。 ");
+        }
+
         var firstChangedIndex = -1;
         for (var i = 0; i < enabledMods.Count; i++)
         {
@@ -153,12 +170,15 @@ public class AutoUpdaterSyncService
                 LogDebug($"[AutoUpdater][Debug] [{mod.ModId}] 缓存变化已写入内存状态，待保存到 SQLite。");
             }
 
-            if (cacheUpdated)
+            if (cacheUpdated || removedDisabledMods > 0)
             {
                 autoUpdaterState.AppId = PathConstants.WorkshopAppId;
-                autoUpdaterState.LastRunAt = DateTimeOffset.Now;
+                autoUpdaterState.LastRunAt = now;
                 SaveAutoUpdaterState(gameRoot, autoUpdaterState);
-                _logger.LogInfo("[AutoUpdater] 已启用模组无变化，已刷新缓存状态。");
+                _logger.LogInfo(
+                    cacheUpdated
+                        ? "[AutoUpdater] 已启用模组无变化，已刷新缓存状态。"
+                        : "[AutoUpdater] 已启用模组无变化，但已清理禁用模组残留并更新状态。");
                 return;
             }
 
@@ -166,9 +186,6 @@ public class AutoUpdaterSyncService
             return;
         }
 
-        var gameBepInExRoot = Path.Combine(gameRoot, "BepInEx");
-        var selfAssemblyPath = Path.GetFullPath(GetType().Assembly.Location);
-        var now = DateTimeOffset.Now;
         LogDebug($"[AutoUpdater][Debug] 将开始重放同步: firstChangedIndex={firstChangedIndex}, bepinexRoot={gameBepInExRoot}");
 
         for (var i = firstChangedIndex; i < enabledMods.Count; i++)
@@ -184,6 +201,7 @@ public class AutoUpdaterSyncService
                 oldModState,
                 now,
                 logInfo: message => _logger.LogInfo(message),
+                logDebug: message => LogDebug(message),
                 logWarning: message => _logger.LogWarning(message));
             newState.Signature = newSignatures[mod.ModId];
             newState.CachedFiles = newCaches[mod.ModId];
