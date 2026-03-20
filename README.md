@@ -2,6 +2,11 @@
 
 基于AvaloniaUI的跨平台（Windows/macOS/Linux）工具，用于管理《学生时代》游戏创意工坊里使用[BepInEx前置包](https://steamcommunity.com/sharedfiles/filedetails/?id=3660837353)的 Mod。
 
+
+## 杀毒软件报毒说明
+如果装了杀软大概率报毒，我自己电脑的360也报了。原因是我没做签名，而且有BepInEx文件很容易就被标记病毒，直接添加信任即可。若有顾虑可以手动拉取代码本地编译运行。
+
+
 ## 功能
 
 - 参考[群芳更多恋人自动更新](https://github.com/lincexu/LinceAutoUpdater)，通过名为AutoUpdater的BepInEx patcher，在游戏启动时自动检测所有BepInEx模组并更新。只需勾选需要的模组并排序，其他步骤全自动完成
@@ -24,6 +29,22 @@
    - macOS：首次运行可能受 Gatekeeper 限制；可在“系统设置 -> 隐私与安全性”中允许，或右键打开。
    - Linux/macOS：未测试，确保`chmod +x`后再运行。
 
+## 部分程序截图
+
+### 主页
+<img width="1426" height="792" alt="image" src="https://github.com/user-attachments/assets/9908cd24-cb11-4ce8-8370-e6ca22bf67c3" />
+
+### Mod管理
+<img width="1906" height="1016" alt="image" src="https://github.com/user-attachments/assets/ac6725ce-9fc8-4860-ac88-ef316db22c9b" />
+
+### 备份
+<img width="1906" height="1016" alt="image" src="https://github.com/user-attachments/assets/cc9cd169-f230-4062-98ff-7715f4b9c566" />
+
+### 设置
+<img width="1906" height="1016" alt="image" src="https://github.com/user-attachments/assets/3af87944-cd7e-45c2-9110-557c2f1f4798" />
+
+
+
 ## 本地构建
 
 ### 环境要求
@@ -38,7 +59,7 @@
 dotnet build ./SABepInExManager.slnx -c Debug
 ```
 
-### 构建Release
+### 发布Release
 
 以下命令会将产物输出到根目录：`./dist/SABepInExManager/<rid>/`。
 
