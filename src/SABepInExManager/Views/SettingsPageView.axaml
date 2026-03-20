@@ -20,11 +20,10 @@
                     <Border Classes="setting-dropdown-row first">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
                             <icons:SymbolIcon Symbol="Folder" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
-                            <Grid Grid.Column="1" RowDefinitions="Auto,Auto" RowSpacing="6">
+                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                 <TextBlock Text="游戏根目录" Classes="setting-title"/>
-                                <TextBox Watermark="例如: D:\SteamLibrary\steamapps\common\StudentAge"
-                                         Text="{Binding HomePage.GameRootPath}"/>
-                            </Grid>
+                                <TextBlock Text="{Binding HomePage.GameRootPath}" Classes="setting-desc"/>
+                            </StackPanel>
                             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                 <Button Classes="action-button secondary-action"
                                         Content="选择文件夹"
@@ -39,11 +38,10 @@
                     <Border Classes="setting-dropdown-row">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
                             <icons:SymbolIcon Symbol="BoxSearch" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
-                            <Grid Grid.Column="1" RowDefinitions="Auto,Auto" RowSpacing="6">
+                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                 <TextBlock Text="创意工坊路径" Classes="setting-title"/>
-                                <TextBox Watermark="例如: D:\SteamLibrary\steamapps\workshop\content\1991040"
-                                         Text="{Binding HomePage.WorkshopContentPath}"/>
-                            </Grid>
+                                <TextBlock Text="{Binding HomePage.WorkshopContentPath}" Classes="setting-desc"/>
+                            </StackPanel>
                             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                 <Button Classes="action-button secondary-action"
                                         Content="选择文件夹"
