@@ -1,13 +1,12 @@
 using SABepInExManager.Models;
 using System.Collections.Generic;
-using System.Reflection;
 
 namespace SABepInExManager.ViewModels;
 
 public class AboutPageViewModel : ViewModelBase
 {
     public string AppName => AppMetadata.Name;
-    public string AppVersion => Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "未知";
+    public string AppVersion => AppMetadata.Version;
     public string Description => AppMetadata.Description;
     public string RepositoryUrl => AppMetadata.RepositoryUrl;
     public string License => AppMetadata.License;
