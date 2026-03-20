@@ -5,12 +5,35 @@ on:
     branches:
       - master
     types:
-      - closed
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
 
 permissions:
   contents: write
 
 jobs:
+  build:
+    if: github.event.action != 'closed'
+    name: Build on PR opened/updated
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore ./SABepInExManager.slnx
+
+      - name: Build solution
+        run: dotnet build ./SABepInExManager.slnx -c Release --no-restore
+
   publish:
     if: github.event.pull_request.merged == true
     name: Publish (${{ matrix.runtime }})
@@ -71,12 +94,28 @@ jobs:
         with:
           path: ./artifacts
 
-      - name: Compute next release version (0.0.x)
+      - name: Compute next release version (SemVer + labels)
         id: version
         uses: actions/github-script@v7
         with:
           script: |
             const { owner, repo } = context.repo;
+            const labels = (context.payload.pull_request?.labels ?? []).map(l => l.name);
+
+            const hasMajor = labels.includes('release:major');
+            const hasMinor = labels.includes('release:minor');
+            const hasPatch = labels.includes('release:patch');
+
+            const selected = [hasMajor, hasMinor, hasPatch].filter(Boolean).length;
+            if (selected > 1) {
+              core.setFailed('Only one label is allowed among release:major, release:minor, release:patch.');
+              return;
+            }
+
+            let bump = 'patch';
+            if (hasMajor) bump = 'major';
+            else if (hasMinor) bump = 'minor';
+
             const releases = await github.paginate(github.rest.repos.listReleases, {
               owner,
               repo,
@@ -85,15 +124,36 @@ jobs:
 
             const semverLike = releases
               .map(r => r.tag_name)
-              .filter(tag => /^0\.0\.\d+$/.test(tag));
+              .filter(tag => /^\d+\.\d+\.\d+$/.test(tag))
+              .map(tag => {
+                const [major, minor, patch] = tag.split('.').map(Number);
+                return { tag, major, minor, patch };
+              })
+              .sort((a, b) => {
+                if (a.major !== b.major) return b.major - a.major;
+                if (a.minor !== b.minor) return b.minor - a.minor;
+                return b.patch - a.patch;
+              });
 
             if (semverLike.length === 0) {
-              core.setOutput('version', '0.0.1');
+              core.setOutput('version', '0.1.0');
+              core.setOutput('bump', bump);
               return;
             }
 
-            const maxPatch = Math.max(...semverLike.map(tag => Number(tag.split('.')[2])));
-            core.setOutput('version', `0.0.${maxPatch + 1}`);
+            const latest = semverLike[0];
+            let nextVersion = '';
+
+            if (bump === 'major') {
+              nextVersion = `${latest.major + 1}.0.0`;
+            } else if (bump === 'minor') {
+              nextVersion = `${latest.major}.${latest.minor + 1}.0`;
+            } else {
+              nextVersion = `${latest.major}.${latest.minor}.${latest.patch + 1}`;
+            }
+
+            core.setOutput('version', nextVersion);
+            core.setOutput('bump', bump);
 
       - name: Create GitHub Release and upload zip assets
         uses: softprops/action-gh-release@v2

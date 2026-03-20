@@ -3,6 +3,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using FluentIcons.Avalonia;
+using FluentIcons.Common;
 
 namespace SABepInExManager.Services;
 
@@ -12,9 +14,11 @@ public sealed class DialogService
     {
         var tcs = new TaskCompletionSource<bool>();
 
-        var iconBlock = new TextBlock
+        var iconBlock = new SymbolIcon
         {
-            Text = options.IsDangerous ? "⚠" : "ℹ",
+            Symbol = Symbol.Warning,
+            FontSize = 20,
+            VerticalAlignment = VerticalAlignment.Center,
             Classes = { "dialog-danger-icon" },
             IsVisible = options.IsDangerous,
         };
@@ -62,14 +66,11 @@ public sealed class DialogService
             });
         }
 
-        var messageBorder = new Border
+        var messageScrollViewer = new ScrollViewer
         {
-            Classes =
-            {
-                "dialog-message-box",
-                options.IsDangerous ? "danger-tone" : "default-tone"
-            },
-            Child = messagePanel,
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+            Content = messagePanel,
         };
 
         var cancelButton = new Button
@@ -102,26 +103,27 @@ public sealed class DialogService
 
         var content = new Grid
         {
-            RowDefinitions = new RowDefinitions("Auto,Auto,Auto"),
+            RowDefinitions = new RowDefinitions("Auto,*,Auto"),
             RowSpacing = 12,
             Children =
             {
                 header,
-                messageBorder,
+                messageScrollViewer,
                 actionsPanel,
             }
         };
-        Grid.SetRow(messageBorder, 1);
+        Grid.SetRow(messageScrollViewer, 1);
         Grid.SetRow(actionsPanel, 2);
 
         var dialog = new Window
         {
-            Title = options.Title,
+            Title = "警告",
             Width = 520,
             MinWidth = 480,
             MaxWidth = 640,
             MinHeight = 220,
-            SizeToContent = SizeToContent.Height,
+            Height = 260,
+            SizeToContent = SizeToContent.Manual,
             Classes = { "app-dialog" },
             Content = new Border
             {

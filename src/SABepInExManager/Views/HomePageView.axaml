@@ -103,7 +103,7 @@
                             IsEnabled="{Binding IsBepInExInstalled}"
                             Command="{Binding PreviewConflictsCommand}"/>
                     <Button Classes="action-button secondary-action"
-                            Content="创建/更新备份"
+                            Content="创建备份"
                             IsEnabled="{Binding IsBepInExInstalled}"
                             Command="{Binding CreateBaselineCommand}"/>
                     <Button Classes="danger-action"

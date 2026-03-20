@@ -10,6 +10,92 @@ namespace SABepInExManager.AutoUpdater.Tests;
 public class PatcherFileSyncEngineTests
 {
     [Property(MaxTest = 40)]
+    public void CleanupDisabledMods_ShouldDeleteFilesOfDisabledMod_AndKeepEnabledModState(
+        NonEmptyString enabledSeed,
+        NonEmptyString disabledSeed,
+        NonEmptyString enabledFileSeed,
+        NonEmptyString disabledFileSeed)
+    {
+        using var fx = new TempDirectoryFixture();
+        var gameRoot = fx.EnsureDirectory("game", "BepInEx");
+        var selfAssemblyPath = fx.WriteText("game/BepInEx/patchers/self.dll", "self");
+
+        var enabledModId = "enabled_" + ToSafeFileName(enabledSeed.Get);
+        var disabledModId = "disabled_" + ToSafeFileName(disabledSeed.Get);
+        if (string.Equals(enabledModId, disabledModId, StringComparison.OrdinalIgnoreCase))
+        {
+            disabledModId += "_x";
+        }
+
+        var enabledFile = ToSafeFileName(enabledFileSeed.Get) + ".dll";
+        var disabledFile = ToSafeFileName(disabledFileSeed.Get) + ".dll";
+
+        fx.WriteText($"game/BepInEx/plugins/{enabledModId}/{enabledFile}", "A");
+        fx.WriteText($"game/BepInEx/plugins/{disabledModId}/{disabledFile}", "B");
+
+        var stateMods = new Dictionary<string, AutoUpdaterModState>(StringComparer.OrdinalIgnoreCase)
+        {
+            [enabledModId] = new AutoUpdaterModState
+            {
+                Signature = "sig-A",
+                Files = new List<string> { $"plugins/{enabledModId}/{enabledFile}" },
+            },
+            [disabledModId] = new AutoUpdaterModState
+            {
+                Signature = "sig-B",
+                Files = new List<string> { $"plugins/{disabledModId}/{disabledFile}" },
+            },
+        };
+
+        var removed = AutoUpdaterFileSyncEngine.CleanupDisabledMods(
+            gameRoot,
+            selfAssemblyPath,
+            stateMods,
+            enabledModIds: new[] { enabledModId },
+            now: DateTimeOffset.UtcNow);
+
+        removed.Should().Be(1);
+        File.Exists(Path.Combine(gameRoot, "plugins", disabledModId, disabledFile)).Should().BeFalse();
+        File.Exists(Path.Combine(gameRoot, "plugins", enabledModId, enabledFile)).Should().BeTrue();
+        stateMods.ContainsKey(enabledModId).Should().BeTrue();
+        stateMods.ContainsKey(disabledModId).Should().BeFalse();
+    }
+
+    [Property(MaxTest = 40)]
+    public void CleanupDisabledMods_WhenEnabledIsEmpty_ShouldRemoveAllStateModsAndTheirFiles(
+        NonEmptyString modSeed,
+        NonEmptyString fileSeed)
+    {
+        using var fx = new TempDirectoryFixture();
+        var gameRoot = fx.EnsureDirectory("game", "BepInEx");
+        var selfAssemblyPath = fx.WriteText("game/BepInEx/patchers/self.dll", "self");
+
+        var modId = "mod_" + ToSafeFileName(modSeed.Get);
+        var fileName = ToSafeFileName(fileSeed.Get) + ".dll";
+        fx.WriteText($"game/BepInEx/plugins/{modId}/{fileName}", "A");
+
+        var stateMods = new Dictionary<string, AutoUpdaterModState>(StringComparer.OrdinalIgnoreCase)
+        {
+            [modId] = new AutoUpdaterModState
+            {
+                Signature = "sig-A",
+                Files = new List<string> { $"plugins/{modId}/{fileName}" },
+            },
+        };
+
+        var removed = AutoUpdaterFileSyncEngine.CleanupDisabledMods(
+            gameRoot,
+            selfAssemblyPath,
+            stateMods,
+            enabledModIds: Array.Empty<string>(),
+            now: DateTimeOffset.UtcNow);
+
+        removed.Should().Be(1);
+        File.Exists(Path.Combine(gameRoot, "plugins", modId, fileName)).Should().BeFalse();
+        stateMods.Should().BeEmpty();
+    }
+
+    [Property(MaxTest = 40)]
     public void SyncSingleMod_ShouldDeleteRemovedWhitelistedFile(NonEmptyString nameSeed)
     {
         using var fx = new TempDirectoryFixture();

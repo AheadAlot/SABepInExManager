@@ -1,0 +1,153 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SABepInExManager.ViewModels"
+             xmlns:icons="using:FluentIcons.Avalonia"
+             x:Class="SABepInExManager.Views.SettingsPageView"
+             x:DataType="vm:SettingsPageViewModel">
+
+    <StackPanel Margin="0" Spacing="12" HorizontalAlignment="Stretch">
+
+        <Expander Classes="settings-expander" IsExpanded="True" HorizontalAlignment="Stretch">
+            <Expander.Header>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <icons:SymbolIcon Symbol="Folder" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                    <TextBlock Text="路径设置" Classes="settings-expander-title" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Expander.Header>
+
+            <Border Classes="settings-expander-content">
+                <StackPanel Spacing="0">
+                    <Border Classes="setting-dropdown-row first">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+                            <icons:SymbolIcon Symbol="Folder" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                <TextBlock Text="游戏根目录" Classes="setting-title"/>
+                                <TextBlock Text="{Binding HomePage.GameRootPath}" Classes="setting-desc"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <Button Classes="action-button secondary-action"
+                                        Content="选择文件夹"
+                                        Click="OnPickGameRootFolderClicked"/>
+                                <Button Classes="action-button primary-action"
+                                        Content="自动探测"
+                                        Command="{Binding HomePage.DetectGameRootPathCommand}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Classes="setting-dropdown-row">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+                            <icons:SymbolIcon Symbol="BoxSearch" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                <TextBlock Text="创意工坊路径" Classes="setting-title"/>
+                                <TextBlock Text="{Binding HomePage.WorkshopContentPath}" Classes="setting-desc"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <Button Classes="action-button secondary-action"
+                                        Content="选择文件夹"
+                                        Click="OnPickWorkshopFolderClicked"/>
+                                <Button Classes="action-button primary-action"
+                                        Content="自动探测"
+                                        Command="{Binding HomePage.DetectWorkshopPathCommand}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </Expander>
+
+        <Expander Classes="settings-expander" IsExpanded="True" HorizontalAlignment="Stretch">
+            <Expander.Header>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <icons:SymbolIcon Symbol="Settings" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                    <TextBlock Text="高级设置" Classes="settings-expander-title" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Expander.Header>
+
+            <Border Classes="settings-expander-content">
+                <StackPanel Spacing="0">
+                    <Border Classes="setting-dropdown-row first">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <icons:SymbolIcon Symbol="Code" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="Debug 日志" Classes="setting-title"/>
+                                <TextBlock Text="开启后在日志与 BepInEx 控制台记录并显示 Debug 日志。"
+                                           Classes="setting-desc"/>
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="2"
+                                          VerticalAlignment="Center"
+                                          OnContent="开"
+                                          OffContent="关"
+                                          IsChecked="{Binding HomePage.EnableDebugLogging}"/>
+                        </Grid>
+                    </Border>
+
+                    <Border Classes="setting-dropdown-row">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <icons:SymbolIcon Symbol="DatabaseSearch" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="清空模组版本缓存" Classes="setting-title"/>
+                                <TextBlock Text="删除本地缓存的模组版本签名缓存，下次启动游戏会重新计算签名。"
+                                           Classes="setting-desc"/>
+                            </StackPanel>
+                            <Button Grid.Column="2"
+                                    Classes="setting-inline-action"
+                                    VerticalAlignment="Center"
+                                    Content="执行"
+                                    Click="OnClearModVersionCacheClicked"/>
+                        </Grid>
+                    </Border>
+
+                    <Border Classes="setting-dropdown-row">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <icons:SymbolIcon Symbol="ArrowSync" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="更新 AutoUpdater" Classes="setting-title"/>
+                                <TextBlock Text="将重新部署 AutoUpdater 到游戏目录并覆盖已有文件。"
+                                           Classes="setting-desc"/>
+                            </StackPanel>
+                            <Button Grid.Column="2"
+                                    Classes="action-button secondary-action"
+                                    VerticalAlignment="Center"
+                                    Content="执行"
+                                    Click="OnUpdateAutoUpdaterClicked"/>
+                        </Grid>
+                    </Border>
+
+                    <Border Classes="setting-dropdown-row">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <icons:SymbolIcon Symbol="AppsSettings" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="重新安装 BepInEx" Classes="setting-title"/>
+                                <TextBlock Text="将重新覆盖安装 BepInEx，并从游戏根目录删除所有已有模组。"
+                                           Classes="setting-desc"/>
+                            </StackPanel>
+                            <Button Grid.Column="2"
+                                    Classes="action-button danger-action"
+                                    VerticalAlignment="Center"
+                                    Content="执行"
+                                    Click="OnReinstallBepInExClicked"/>
+                        </Grid>
+                    </Border>
+
+                    <Border Classes="setting-dropdown-row">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <icons:SymbolIcon Symbol="Warning" FontSize="18" VerticalAlignment="Center" Foreground="#B45309"/>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="删除所有备份" Classes="setting-title"/>
+                                <TextBlock Text="删除本地所有备份快照，不可恢复。"
+                                           Classes="setting-desc"/>
+                            </StackPanel>
+                            <Button Grid.Column="2"
+                                    Classes="action-button danger-action"
+                                    VerticalAlignment="Center"
+                                    Content="执行"
+                                    Click="OnDeleteAllBackupsClicked"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </Expander>
+    </StackPanel>
+</UserControl>
+

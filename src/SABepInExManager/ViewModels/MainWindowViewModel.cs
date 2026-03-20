@@ -8,6 +8,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
+using SABepInExManager.Core.Models;
+using SABepInExManager.Core.Services;
 using SABepInExManager.Models;
 using SABepInExManager.Services;
 
@@ -16,18 +18,26 @@ namespace SABepInExManager.ViewModels;
 public class HomePageViewModel : ViewModelBase
 {
     private const int MaxLogEntries = 5000;
+    private const string AutoUpdaterStateDbFolder = "SABepInExManager_AutoUpdater";
+    private const string AutoUpdaterStateDbFileName = "state.db";
 
     private readonly ConfigService _configService = new();
     private readonly WorkshopService _workshopService = new();
     private readonly ModApplyService _modApplyService = new();
     private readonly BepInExService _bepInExService = new();
     private readonly SteamLocatorService _steamLocatorService = new();
+    private readonly AutoUpdaterSqliteStateStore _autoUpdaterStateStore = new();
 
     private string _gameRootPath = string.Empty;
     private string _workshopContentPath = string.Empty;
     private WorkshopModInfo? _selectedMod;
     private bool _isBepInExInstalled;
     private bool _isRefreshingMods;
+    private bool _isPathRefreshInProgress;
+    private bool _pathRefreshRequested;
+    private int _conflictedModCount;
+    private DateTimeOffset? _lastScannedAt;
+    private bool _enableDebugLogging;
 
     public HomePageViewModel()
     {
@@ -41,8 +51,15 @@ public class HomePageViewModel : ViewModelBase
         MoveSelectedDownCommand = new RelayCommand(MoveSelectedDown);
         InstallBepInExCommand = new AsyncRelayCommand(InstallBepInExAsync);
         OpenSelectedModFolderCommand = new RelayCommand(OpenSelectedModFolder);
+        ClearLogsCommand = new RelayCommand(ClearLogs);
 
         Mods.CollectionChanged += OnModsCollectionChanged;
+        Logs.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(LatestLogMessage));
+            SyncRecentLogs();
+        };
+        SyncRecentLogs();
     }
 
     public ObservableCollection<WorkshopModInfo> Mods { get; } = new();
@@ -55,6 +72,9 @@ public class HomePageViewModel : ViewModelBase
         },
     ];
 
+    public ObservableCollection<LogEntry> RecentLogs { get; } = new();
+    public ObservableCollection<ConflictPreviewItem> ConflictPreviewItems { get; } = new();
+
     public string GameRootPath
     {
         get => _gameRootPath;
@@ -62,7 +82,10 @@ public class HomePageViewModel : ViewModelBase
         {
             if (SetProperty(ref _gameRootPath, value))
             {
+                OnPropertyChanged(nameof(DisplayGameRootPath));
+                OnPropertyChanged(nameof(BaselineDirectoryPath));
                 CheckBepInExStatus();
+                QueueRefreshModsAfterPathChanged();
             }
         }
     }
@@ -70,7 +93,14 @@ public class HomePageViewModel : ViewModelBase
     public string WorkshopContentPath
     {
         get => _workshopContentPath;
-        set => SetProperty(ref _workshopContentPath, value);
+        set
+        {
+            if (SetProperty(ref _workshopContentPath, value))
+            {
+                OnPropertyChanged(nameof(DisplayWorkshopContentPath));
+                QueueRefreshModsAfterPathChanged();
+            }
+        }
     }
 
     public WorkshopModInfo? SelectedMod
@@ -82,11 +112,104 @@ public class HomePageViewModel : ViewModelBase
     public bool IsBepInExInstalled
     {
         get => _isBepInExInstalled;
-        private set => SetProperty(ref _isBepInExInstalled, value);
+        private set
+        {
+            if (!SetProperty(ref _isBepInExInstalled, value))
+            {
+                return;
+            }
+
+            OnPropertyChanged(nameof(BepInExStatusText));
+            OnPropertyChanged(nameof(InstallBepInExButtonText));
+            NotifyDashboardStatusChanged();
+        }
     }
 
     public string BepInExStatusText => IsBepInExInstalled ? "已安装" : "未安装";
+    public string EnvironmentAvailabilityText => IsBepInExInstalled ? "可用" : "不可用";
     public string InstallBepInExButtonText => IsBepInExInstalled ? "重装" : "安装";
+    public string LatestLogMessage => Logs.Count > 0 ? Logs[^1].Message : "就绪。";
+    public int ManagedModCount => Mods.Count;
+    public int EnabledModCount => Mods.Count(m => m.IsEnabled);
+    public int DisabledModCount => Math.Max(0, ManagedModCount - EnabledModCount);
+    public bool HasConflicts => ConflictedModCount > 0;
+    public string LastScanTimeText => _lastScannedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "未扫描";
+    public string DisplayGameRootPath => string.IsNullOrWhiteSpace(GameRootPath) ? "未配置" : GameRootPath;
+    public string DisplayWorkshopContentPath => string.IsNullOrWhiteSpace(WorkshopContentPath) ? "未配置" : WorkshopContentPath;
+    public string BaselineDirectoryPath => string.IsNullOrWhiteSpace(GameRootPath)
+        ? "未配置"
+        : Path.Combine(GameRootPath, PathConstants.StateRootFolder, PathConstants.BaselineFolder);
+    public string CurrentConfigName => "默认配置";
+    public string DashboardPrimaryStatusText
+    {
+        get
+        {
+            if (!IsBepInExInstalled)
+            {
+                return "BepInEx 未安装，当前环境不可用";
+            }
+
+            if (HasConflicts)
+            {
+                return $"BepInEx 已安装，检测到 {ConflictedModCount} 个冲突路径";
+            }
+
+            return "BepInEx 已安装";
+        }
+    }
+
+    public string DashboardSecondaryStatusText
+    {
+        get
+        {
+            if (!IsBepInExInstalled)
+            {
+                return "请先安装或修复 BepInEx，随后重新扫描 Mod。";
+            }
+
+            if (HasConflicts)
+            {
+                return $"已检测 {ManagedModCount} 个 Mod，其中 {EnabledModCount} 个已启用。当前存在冲突，建议先处理。";
+            }
+
+            return $"已检测 {ManagedModCount} 个 Mod，其中 {EnabledModCount} 个已启用，未发现异常。";
+        }
+    }
+
+    public int ConflictedModCount
+    {
+        get => _conflictedModCount;
+        private set
+        {
+            if (!SetProperty(ref _conflictedModCount, value))
+            {
+                return;
+            }
+
+            OnPropertyChanged(nameof(HasConflicts));
+            NotifyDashboardStatusChanged();
+        }
+    }
+
+    public bool EnableDebugLogging
+    {
+        get => _enableDebugLogging;
+        set
+        {
+            if (!SetProperty(ref _enableDebugLogging, value))
+            {
+                return;
+            }
+
+            if (!value)
+            {
+                RemoveDebugLogsFromView();
+            }
+
+            AppendInfoLog($"Debug 日志已{(value ? "开启" : "关闭")}。", reset: false);
+            _ = SaveDebugLoggingPreferenceAsync();
+        }
+    }
 
     public IAsyncRelayCommand RefreshModsCommand { get; }
     public IAsyncRelayCommand DetectGameRootPathCommand { get; }
@@ -98,12 +221,16 @@ public class HomePageViewModel : ViewModelBase
     public IRelayCommand MoveSelectedDownCommand { get; }
     public IAsyncRelayCommand InstallBepInExCommand { get; }
     public IRelayCommand OpenSelectedModFolderCommand { get; }
+    public IRelayCommand ClearLogsCommand { get; }
 
     public async Task InitializeAsync()
     {
         var config = await _configService.LoadAsync();
         GameRootPath = config.GameRootPath ?? string.Empty;
         WorkshopContentPath = config.WorkshopContentPath ?? string.Empty;
+        _enableDebugLogging = config.EnableDebugLogging;
+        OnPropertyChanged(nameof(EnableDebugLogging));
+        AppendDebugLog($"配置加载完成：EnableDebugLogging={EnableDebugLogging}, GameRootPath={GameRootPath}, WorkshopContentPath={WorkshopContentPath}");
 
         if (string.IsNullOrWhiteSpace(GameRootPath))
         {
@@ -127,14 +254,68 @@ public class HomePageViewModel : ViewModelBase
         {
             GameRootPath = GameRootPath,
             WorkshopContentPath = WorkshopContentPath,
+            EnableDebugLogging = EnableDebugLogging,
         });
+
+        AppendDebugLog("配置已保存。", reset: false);
+    }
+
+    public async Task RefreshModsAfterPathChangedAsync()
+    {
+        await SaveConfigAsync();
+
+        if (string.IsNullOrWhiteSpace(GameRootPath)
+            || string.IsNullOrWhiteSpace(WorkshopContentPath)
+            || !Directory.Exists(GameRootPath)
+            || !Directory.Exists(WorkshopContentPath))
+        {
+            return;
+        }
+
+        try
+        {
+            ValidateGameRootForActionsOrThrow();
+        }
+        catch
+        {
+            return;
+        }
+
+        await RefreshModsAsync();
+    }
+
+    private void QueueRefreshModsAfterPathChanged()
+    {
+        _ = RefreshModsAfterPathChangedQueuedAsync();
+    }
+
+    private async Task RefreshModsAfterPathChangedQueuedAsync()
+    {
+        if (_isPathRefreshInProgress)
+        {
+            _pathRefreshRequested = true;
+            return;
+        }
+
+        _isPathRefreshInProgress = true;
+        try
+        {
+            do
+            {
+                _pathRefreshRequested = false;
+                await RefreshModsAfterPathChangedAsync();
+            }
+            while (_pathRefreshRequested);
+        }
+        finally
+        {
+            _isPathRefreshInProgress = false;
+        }
     }
 
     public void CheckBepInExStatus()
     {
         IsBepInExInstalled = _bepInExService.IsInstalled(GameRootPath);
-        OnPropertyChanged(nameof(BepInExStatusText));
-        OnPropertyChanged(nameof(InstallBepInExButtonText));
     }
 
     private bool EnsureBepInExInstalledForAction(string actionName)
@@ -170,6 +351,7 @@ public class HomePageViewModel : ViewModelBase
 
     private async Task RefreshModsAsync()
     {
+        AppendDebugLog($"开始刷新模组：GameRootPath={GameRootPath}, WorkshopContentPath={WorkshopContentPath}", reset: false);
         _isRefreshingMods = true;
         UnsubscribeAllModPropertyChanged();
         Mods.Clear();
@@ -185,6 +367,7 @@ public class HomePageViewModel : ViewModelBase
             var state = _modApplyService.LoadState(GameRootPath);
             var enabledOrder = state?.EnabledModIds ?? new List<string>();
             var mods = _workshopService.ScanMods(WorkshopContentPath, enabledOrder);
+            AppendDebugLog($"扫描完成（内部）：已读取启用顺序 {enabledOrder.Count} 项，扫描到 {mods.Count} 项。", reset: false);
 
             foreach (var mod in mods)
             {
@@ -198,17 +381,36 @@ public class HomePageViewModel : ViewModelBase
         }
 
         SelectedMod = Mods.FirstOrDefault();
+        _lastScannedAt = DateTimeOffset.Now;
+        OnPropertyChanged(nameof(LastScanTimeText));
         AppendLog($"扫描完成：找到 {Mods.Count} 个可管理 mod。", reset: true);
+        UpdateModSummary();
         PersistEnabledState();
         await SaveConfigAsync();
     }
 
     private void DetectWorkshopPath()
     {
-        WorkshopContentPath = _workshopService.AutoDetectWorkshopPath(GameRootPath) ?? WorkshopContentPath;
-        AppendLog(string.IsNullOrWhiteSpace(WorkshopContentPath)
-            ? "未自动探测到工坊目录，请手动选择。"
-            : $"已自动探测工坊目录：{WorkshopContentPath}");
+        AppendDebugLog("开始自动探测工坊目录。", reset: false);
+        try
+        {
+            ValidateGameRootForActionsOrThrow();
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"自动探测工坊目录失败：{ex.Message}", reset: true);
+            return;
+        }
+
+        var autoDetectedWorkshopPath = _workshopService.AutoDetectWorkshopPath(GameRootPath);
+        if (string.IsNullOrWhiteSpace(autoDetectedWorkshopPath))
+        {
+            AppendLog("未自动探测到工坊目录，请手动选择。", reset: true);
+            return;
+        }
+
+        WorkshopContentPath = autoDetectedWorkshopPath;
+        AppendLog($"已自动探测工坊目录：{WorkshopContentPath}", reset: true);
     }
 
     private async Task DetectGameRootPathAsync()
@@ -218,6 +420,7 @@ public class HomePageViewModel : ViewModelBase
 
     private async Task DetectGameRootPathAsync(bool triggeredByUser)
     {
+        AppendDebugLog($"开始自动探测游戏根目录：triggeredByUser={triggeredByUser}", reset: false);
         try
         {
             var result = _steamLocatorService.TryDetectGameRoot(PathConstants.WorkshopAppId);
@@ -233,6 +436,7 @@ public class HomePageViewModel : ViewModelBase
 
             GameRootPath = result.GameRootPath;
             AppendLog($"已自动探测游戏根目录：{GameRootPath}", reset: triggeredByUser);
+            AppendDebugLog($"自动探测结果详情：候选数量={result.Candidates.Count}, 选中路径={result.GameRootPath}", reset: false);
 
             if (result.Candidates.Count > 1)
             {
@@ -276,8 +480,8 @@ public class HomePageViewModel : ViewModelBase
                 return;
             }
 
-            _modApplyService.CreateOrUpdateBaseline(GameRootPath);
-            AppendLog("Baseline 已创建/更新。", reset: true);
+            _modApplyService.CreateBaseline(GameRootPath);
+            AppendLog("备份已创建。", reset: true);
         }
         catch (Exception ex)
         {
@@ -308,8 +512,95 @@ public class HomePageViewModel : ViewModelBase
         await SaveConfigAsync();
     }
 
+    public async Task RestoreBaselineSnapshotAsync(string snapshotFolderName)
+    {
+        try
+        {
+            ValidateGameRootForActionsOrThrow();
+            if (!EnsureBepInExInstalledForAction("恢复备份"))
+            {
+                return;
+            }
+
+            _modApplyService.RestoreBaseline(GameRootPath, snapshotFolderName);
+            AppendLog($"已恢复备份：{snapshotFolderName}", reset: true);
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"恢复备份失败：{ex.Message}", reset: true);
+        }
+
+        await SaveConfigAsync();
+    }
+
+    public async Task DeleteBaselineSnapshotAsync(string snapshotFolderName)
+    {
+        try
+        {
+            ValidateGameRootForActionsOrThrow();
+            _modApplyService.DeleteBaselineSnapshot(GameRootPath, snapshotFolderName);
+            AppendLog($"已删除备份：{snapshotFolderName}", reset: true);
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"删除备份失败：{ex.Message}", reset: true);
+        }
+
+        await SaveConfigAsync();
+    }
+
+    public async Task DeleteAllBaselineSnapshotsAsync()
+    {
+        try
+        {
+            ValidateGameRootForActionsOrThrow();
+            _modApplyService.DeleteAllBaselineSnapshots(GameRootPath);
+            AppendLog("已删除所有备份。", reset: true);
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"删除所有备份失败：{ex.Message}", reset: true);
+        }
+
+        await SaveConfigAsync();
+    }
+
+    public async Task ClearModVersionCacheAsync()
+    {
+        try
+        {
+            ValidateGameRootOrThrow();
+
+            var autoUpdaterDbPath = Path.Combine(
+                GameRootPath,
+                "BepInEx",
+                "patchers",
+                AutoUpdaterStateDbFolder,
+                AutoUpdaterStateDbFileName);
+
+            _autoUpdaterStateStore.Save(autoUpdaterDbPath, new AutoUpdaterSyncState
+            {
+                AppId = PathConstants.WorkshopAppId,
+                LastRunAt = DateTimeOffset.MinValue,
+                Mods = new Dictionary<string, AutoUpdaterModState>(StringComparer.OrdinalIgnoreCase),
+            });
+
+            AppendDebugLog($"AutoUpdater 缓存文件已重置：{autoUpdaterDbPath}", reset: false);
+
+            AppendLog("已清空模组版本缓存。", reset: true);
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"清空模组版本缓存失败：{ex.Message}", reset: true);
+        }
+
+        await SaveConfigAsync();
+    }
+
     private void PreviewConflicts()
     {
+        ConflictPreviewItems.Clear();
+
         try
         {
             ValidateGameRootForActionsOrThrow();
@@ -333,11 +624,44 @@ public class HomePageViewModel : ViewModelBase
             return;
         }
 
+        foreach (var item in conflicts)
+        {
+            ConflictPreviewItems.Add(new ConflictPreviewItem
+            {
+                RelativeToGameRootPath = ToGameRootRelativePath(item.RelativePath),
+                ExistsIn = string.Join("、", item.ModIds.Select(FormatModLabel)),
+                Winner = FormatModLabel(item.WinnerModId),
+            });
+        }
+
         AppendLog($"检测到 {conflicts.Count} 个冲突路径（仅展示前 30 条）：", reset: true);
         foreach (var item in conflicts.Take(30))
         {
             AppendLog($"- {item.RelativePath} | 冲突: {string.Join(", ", item.ModIds)} | 最终生效: {item.WinnerModId}");
         }
+    }
+
+    private string ToGameRootRelativePath(string conflictRelativePath)
+    {
+        var normalized = (conflictRelativePath ?? string.Empty)
+            .Replace('\\', '/')
+            .TrimStart('/');
+        return $"BepInEx/{normalized}";
+    }
+
+    private string FormatModLabel(string modId)
+    {
+        if (string.IsNullOrWhiteSpace(modId))
+        {
+            return string.Empty;
+        }
+
+        var mod = Mods.FirstOrDefault(m => string.Equals(m.ModId, modId, StringComparison.OrdinalIgnoreCase));
+        var name = mod?.DisplayName?.Trim();
+
+        return string.IsNullOrWhiteSpace(name) || string.Equals(name, modId, StringComparison.OrdinalIgnoreCase)
+            ? modId
+            : $"{modId} ({name})";
     }
 
     private void MoveSelectedUp()
@@ -396,6 +720,10 @@ public class HomePageViewModel : ViewModelBase
             return;
         }
 
+        OnPropertyChanged(nameof(ManagedModCount));
+        OnPropertyChanged(nameof(EnabledModCount));
+        OnPropertyChanged(nameof(DisabledModCount));
+        UpdateModSummary();
         PersistEnabledState();
     }
 
@@ -411,6 +739,9 @@ public class HomePageViewModel : ViewModelBase
             return;
         }
 
+        OnPropertyChanged(nameof(EnabledModCount));
+        OnPropertyChanged(nameof(DisabledModCount));
+        UpdateModSummary();
         PersistEnabledState();
     }
 
@@ -432,7 +763,9 @@ public class HomePageViewModel : ViewModelBase
         var existingState = _modApplyService.LoadState(GameRootPath) ?? new AppState();
         existingState.EnabledModIds = GetEnabledModsInOrder().Select(m => m.ModId).ToList();
         existingState.WorkshopContentPath = WorkshopContentPath;
+        existingState.EnableDebugLogging = EnableDebugLogging;
         _modApplyService.SaveState(GameRootPath, existingState);
+        AppendDebugLog($"状态已持久化：EnabledModIds={existingState.EnabledModIds.Count}, EnableDebugLogging={EnableDebugLogging}", reset: false);
     }
 
     private async Task InstallBepInExAsync()
@@ -445,11 +778,33 @@ public class HomePageViewModel : ViewModelBase
         await InstallBepInExInternalAsync(forceReinstall: true);
     }
 
+    public async Task UpdateAutoUpdaterAsync()
+    {
+        try
+        {
+            ValidateGameRootOrThrow();
+            AppendDebugLog($"开始执行 AutoUpdater 更新：GameRootPath={GameRootPath}", reset: false);
+            AppendLog("开始更新 AutoUpdater（覆盖现有文件）...", reset: true);
+
+            var result = await _bepInExService.UpdateAutoUpdaterAsync(GameRootPath, message => AppendLog(message));
+
+            AppendLog(result.Message);
+            AppendDebugLog($"AutoUpdater 更新结束：success={result.Success}", reset: false);
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"更新 AutoUpdater 失败：{ex.Message}");
+        }
+
+        await SaveConfigAsync();
+    }
+
     private async Task InstallBepInExInternalAsync(bool forceReinstall)
     {
         try
         {
             ValidateGameRootOrThrow();
+            AppendDebugLog($"开始执行 BepInEx 安装流程：forceReinstall={forceReinstall}, GameRootPath={GameRootPath}", reset: false);
             AppendLog(
                 forceReinstall
                     ? "开始重装 BepInEx（先清理旧文件，再重新安装）..."
@@ -459,7 +814,15 @@ public class HomePageViewModel : ViewModelBase
             var result = forceReinstall
                 ? await _bepInExService.ReinstallAsync(GameRootPath, message => AppendLog(message))
                 : await _bepInExService.InstallFromGitHubAsync(GameRootPath, message => AppendLog(message));
+
+            if (forceReinstall && result.Success)
+            {
+                ResetModStateToInitial();
+                await RefreshModsAsync();
+            }
+
             AppendLog(result.Message);
+            AppendDebugLog($"BepInEx 安装流程结束：success={result.Success}", reset: false);
         }
         catch (Exception ex)
         {
@@ -468,6 +831,16 @@ public class HomePageViewModel : ViewModelBase
 
         CheckBepInExStatus();
         await SaveConfigAsync();
+    }
+
+    private void ResetModStateToInitial()
+    {
+        var existingState = _modApplyService.LoadState(GameRootPath) ?? new AppState();
+        existingState.EnabledModIds = [];
+        existingState.WorkshopContentPath = WorkshopContentPath;
+        existingState.EnableDebugLogging = EnableDebugLogging;
+        _modApplyService.SaveState(GameRootPath, existingState);
+        AppendDebugLog("重装成功后已重置 Mod 启用状态与顺序到初始状态。", reset: false);
     }
 
     private void OpenSelectedModFolder()
@@ -539,6 +912,11 @@ public class HomePageViewModel : ViewModelBase
                                  || hasUnityDataSignature
                                  || hasBepInExOrDoorstop;
 
+        AppendDebugLog(
+            $"游戏目录校验：exeCount={exeFiles.Count}, dataDirCount={dataDirs.Count}, " +
+            $"unityPlayer={hasUnityPlayer}, gameAssembly={hasGameAssembly}, steamApi={hasSteamApi}, unityData={hasUnityDataSignature}, bepinexOrDoorstop={hasBepInExOrDoorstop}",
+            reset: false);
+
         if (!hasOtherIndicators)
         {
             throw new InvalidOperationException(
@@ -551,23 +929,102 @@ public class HomePageViewModel : ViewModelBase
         return Mods.Where(m => m.IsEnabled).ToList();
     }
 
+    private async Task SaveDebugLoggingPreferenceAsync()
+    {
+        await SaveConfigAsync();
+        PersistEnabledState();
+    }
+
+    private void RemoveDebugLogsFromView()
+    {
+        var debugLogs = Logs.Where(x => x.Level == AppLogLevel.Debug).ToList();
+        if (debugLogs.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var log in debugLogs)
+        {
+            Logs.Remove(log);
+        }
+    }
+
+    private void AppendInfoLog(string message, bool reset = false)
+        => AppendLogInternal(message, AppLogLevel.Info, reset);
+
+    private void AppendDebugLog(string message, bool reset = false)
+        => AppendLogInternal(message, AppLogLevel.Debug, reset);
+
     private void AppendLog(string message, bool reset = false)
+        => AppendInfoLog(message, reset);
+
+    private void AppendLogInternal(string message, AppLogLevel level, bool reset = false)
     {
         if (reset)
         {
             Logs.Clear();
         }
 
+        if (level == AppLogLevel.Debug && !EnableDebugLogging)
+        {
+            return;
+        }
+
         Logs.Add(new LogEntry
         {
             Timestamp = DateTimeOffset.Now,
             Message = message,
+            Level = level,
         });
 
         while (Logs.Count > MaxLogEntries)
         {
             Logs.RemoveAt(0);
         }
+
+        OnPropertyChanged(nameof(LatestLogMessage));
+        SyncRecentLogs();
+    }
+
+    private void ClearLogs()
+    {
+        Logs.Clear();
+        AppendLog("日志已清空。", reset: false);
+    }
+
+    private void SyncRecentLogs()
+    {
+        RecentLogs.Clear();
+        foreach (var item in Logs.TakeLast(5))
+        {
+            RecentLogs.Add(item);
+        }
+    }
+
+    private void UpdateModSummary()
+    {
+        OnPropertyChanged(nameof(ManagedModCount));
+        OnPropertyChanged(nameof(EnabledModCount));
+        OnPropertyChanged(nameof(DisabledModCount));
+
+        try
+        {
+            ConflictedModCount = _workshopService.BuildConflicts(GetEnabledModsInOrder()).Count;
+        }
+        catch
+        {
+            ConflictedModCount = 0;
+        }
+
+        NotifyDashboardStatusChanged();
+    }
+
+    private void NotifyDashboardStatusChanged()
+    {
+        OnPropertyChanged(nameof(BepInExStatusText));
+        OnPropertyChanged(nameof(EnvironmentAvailabilityText));
+        OnPropertyChanged(nameof(DashboardPrimaryStatusText));
+        OnPropertyChanged(nameof(DashboardSecondaryStatusText));
     }
 }
 

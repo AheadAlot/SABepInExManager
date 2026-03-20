@@ -72,6 +72,7 @@
     <Style Selector="Button.dialog-secondary-action">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="{DynamicResource DialogBorderBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource DialogMutedTextBrush}"/>
     </Style>
 
     <Style Selector="Button.dialog-danger-action">

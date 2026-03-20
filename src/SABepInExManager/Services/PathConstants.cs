@@ -3,6 +3,8 @@ namespace SABepInExManager.Services;
 public static class PathConstants
 {
     public const string WorkshopAppId = SABepInExManager.Core.Constants.PathConstants.WorkshopAppId;
+    public const string ManagerConfigFolder = SABepInExManager.Core.Constants.PathConstants.ManagerConfigFolder;
+    public const string ManagerStateFolder = SABepInExManager.Core.Constants.PathConstants.ManagerStateFolder;
     public const string StateRootFolder = SABepInExManager.Core.Constants.PathConstants.StateRootFolder;
     public const string BaselineFolder = SABepInExManager.Core.Constants.PathConstants.BaselineFolder;
     public const string StateFileName = SABepInExManager.Core.Constants.PathConstants.StateFileName;

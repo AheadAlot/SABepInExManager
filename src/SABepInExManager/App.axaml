@@ -12,6 +12,7 @@
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://SABepInExManager/Styles/DialogStyles.axaml"/>
+        <StyleInclude Source="avares://SABepInExManager/Styles/AppShellStyles.axaml"/>
     </Application.Styles>
 </Application>
 

@@ -1,0 +1,60 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SABepInExManager.ViewModels"
+             x:Class="SABepInExManager.Views.ConflictsPageView"
+             x:DataType="vm:ConflictsPageViewModel">
+
+    <Grid Margin="0" RowDefinitions="Auto,Auto,*" RowSpacing="12">
+        <TextBlock Grid.Row="0"
+                   Text="冲突预览会检测各个模组是否有在相同位置且文件名一样的文件，并根据当前模组加载优先级显示最终生效的文件所属模组。存在冲突不代表游戏无法运行。"
+                   Classes="secondary-text"
+                   TextWrapping="Wrap"/>
+
+        <Border Grid.Row="1" Classes="setting-row">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+                <StackPanel Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="检查冲突" Classes="setting-title"/>
+                    <TextBlock Text="扫描各模组是否存在同名同路径文件，并展示最终生效来源。"
+                               Classes="setting-desc"/>
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Classes="action-button primary-action"
+                        Content="检查冲突"
+                        IsEnabled="{Binding HomePage.IsBepInExInstalled}"
+                        Command="{Binding HomePage.PreviewConflictsCommand}"
+                        VerticalAlignment="Center"
+                        MinWidth="100"/>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Classes="card" Padding="10">
+            <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                <Grid ColumnDefinitions="3*,3*,2*" ColumnSpacing="12">
+                    <TextBlock Text="文件名" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Column="1" Text="存在于" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Column="2" Text="最终生效" FontWeight="SemiBold"/>
+                </Grid>
+
+                <ScrollViewer Grid.Row="1"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding HomePage.ConflictPreviewItems}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="#22000000" BorderThickness="0,0,0,1" Padding="0,8">
+                                    <Grid ColumnDefinitions="3*,3*,2*" ColumnSpacing="12">
+                                        <TextBlock Text="{Binding RelativeToGameRootPath}" TextWrapping="Wrap"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding ExistsIn}" TextWrapping="Wrap"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding Winner}" TextWrapping="Wrap"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
+

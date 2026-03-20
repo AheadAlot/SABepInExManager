@@ -73,7 +73,14 @@ public class WorkshopModDiscoveryService
             return ModStructureType.Standard;
         }
 
-        if (Directory.GetFiles(modDir, "*.dll", SearchOption.AllDirectories).Length > 0)
+        var hasDll = Directory.GetFiles(modDir, "*.dll", SearchOption.AllDirectories).Length > 0;
+        if (!hasDll)
+        {
+            return null;
+        }
+
+        var hasExe = Directory.GetFiles(modDir, "*.exe", SearchOption.AllDirectories).Length > 0;
+        if (!hasExe)
         {
             return ModStructureType.Flat;
         }

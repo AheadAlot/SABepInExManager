@@ -3,15 +3,21 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+    <DebugType>None</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <IncludeAllContentForSelfExtract>false</IncludeAllContentForSelfExtract>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <DebugType>none</DebugType>
-    <DebugSymbols>false</DebugSymbols>
     <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <PublishDir>$(MSBuildThisFileDirectory)..\..\dist\$(MSBuildProjectName)\$(RuntimeIdentifier)\</PublishDir>
   </PropertyGroup>
 
@@ -48,15 +54,27 @@
     <ItemGroup>
       <BundledAutoUpdaterFiles Include="$(BundledAutoUpdaterBuildOutputDir)*.dll" />
       <BundledAutoUpdaterFiles Include="$(BundledAutoUpdaterBuildOutputDir)*.exe" />
+      <BundledAutoUpdaterInteropX86 Include="$(BundledAutoUpdaterBuildOutputDir)x86\SQLite.Interop.dll" Condition="Exists('$(BundledAutoUpdaterBuildOutputDir)x86\SQLite.Interop.dll')" />
+      <BundledAutoUpdaterInteropX64 Include="$(BundledAutoUpdaterBuildOutputDir)x64\SQLite.Interop.dll" Condition="Exists('$(BundledAutoUpdaterBuildOutputDir)x64\SQLite.Interop.dll')" />
     </ItemGroup>
 
     <RemoveDir Directories="$(PublishDir)patchers" Condition="'@(BundledAutoUpdaterFiles)' != '' and Exists('$(PublishDir)patchers')" />
     <MakeDir Directories="$(PublishDir)patchers\SABepInExManager_AutoUpdater" Condition="'@(BundledAutoUpdaterFiles)' != ''" />
+    <MakeDir Directories="$(PublishDir)patchers\SABepInExManager_AutoUpdater\x86" Condition="'@(BundledAutoUpdaterInteropX86)' != ''" />
+    <MakeDir Directories="$(PublishDir)patchers\SABepInExManager_AutoUpdater\x64" Condition="'@(BundledAutoUpdaterInteropX64)' != ''" />
 
     <Copy SourceFiles="@(BundledAutoUpdaterFiles)"
           DestinationFiles="@(BundledAutoUpdaterFiles->'$(PublishDir)patchers\SABepInExManager_AutoUpdater\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true"
           Condition="'@(BundledAutoUpdaterFiles)' != ''" />
+    <Copy SourceFiles="@(BundledAutoUpdaterInteropX86)"
+          DestinationFiles="@(BundledAutoUpdaterInteropX86->'$(PublishDir)patchers\SABepInExManager_AutoUpdater\x86\%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true"
+          Condition="'@(BundledAutoUpdaterInteropX86)' != ''" />
+    <Copy SourceFiles="@(BundledAutoUpdaterInteropX64)"
+          DestinationFiles="@(BundledAutoUpdaterInteropX64->'$(PublishDir)patchers\SABepInExManager_AutoUpdater\x64\%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true"
+          Condition="'@(BundledAutoUpdaterInteropX64)' != ''" />
   </Target>
 
   <ItemGroup>
@@ -68,6 +86,7 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.12" />
+    <PackageReference Include="FluentIcons.Avalonia" Version="1.1.244" />
     <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
     <PackageReference Include="Avalonia.Diagnostics" Version="11.3.12">
       <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>

@@ -6,5 +6,6 @@ public class AppStateLite
 {
     public List<string> EnabledModIds { get; set; } = new();
     public string? WorkshopContentPath { get; set; }
+    public bool? EnableDebugLogging { get; set; }
 }
 
