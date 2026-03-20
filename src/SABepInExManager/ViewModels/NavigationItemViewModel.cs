@@ -1,8 +1,10 @@
+using FluentIcons.Common;
+
 namespace SABepInExManager.ViewModels;
 
 public class NavigationItemViewModel : ViewModelBase
 {
-    public NavigationItemViewModel(string key, string title, string icon, ViewModelBase pageViewModel)
+    public NavigationItemViewModel(string key, string title, Symbol icon, ViewModelBase pageViewModel)
     {
         Key = key;
         Title = title;
@@ -12,7 +14,7 @@ public class NavigationItemViewModel : ViewModelBase
 
     public string Key { get; }
     public string Title { get; }
-    public string Icon { get; }
+    public Symbol Icon { get; }
     public ViewModelBase PageViewModel { get; }
 }
 

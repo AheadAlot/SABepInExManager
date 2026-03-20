@@ -1,19 +1,94 @@
 <Styles xmlns="https://github.com/avaloniaui">
     <Style Selector="TextBlock">
-        <Setter Property="Foreground" Value="#1A202C"/>
+        <Setter Property="Foreground" Value="#1F2328"/>
     </Style>
 
     <Style Selector="Border.card">
         <Setter Property="Background" Value="#FFFFFF"/>
-        <Setter Property="BorderBrush" Value="#D8E0EB"/>
+        <Setter Property="BorderBrush" Value="#DCE3EC"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="10"/>
-        <Setter Property="Padding" Value="12"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="14"/>
     </Style>
 
     <Style Selector="TextBlock.secondary-text">
         <Setter Property="Foreground" Value="#64748B"/>
         <Setter Property="FontSize" Value="12"/>
+    </Style>
+
+    <Style Selector="Border.setting-row">
+        <Setter Property="Background" Value="#FFFFFF"/>
+        <Setter Property="BorderBrush" Value="#E1E6ED"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="14,12"/>
+    </Style>
+
+    <Style Selector="TextBlock.setting-title">
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="#111827"/>
+    </Style>
+
+    <Style Selector="TextBlock.setting-desc">
+        <Setter Property="Foreground" Value="#6B7280"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+
+    <Style Selector="Border.shell-nav-pane">
+        <Setter Property="Background" Value="#F4F7FB"/>
+        <Setter Property="BorderBrush" Value="#DCE3EC"/>
+        <Setter Property="BorderThickness" Value="0,0,1,0"/>
+        <Setter Property="Padding" Value="14,12"/>
+    </Style>
+
+    <Style Selector="TextBox.search-box">
+        <Setter Property="Background" Value="#FFFFFF"/>
+        <Setter Property="BorderBrush" Value="#D1D9E3"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="16"/>
+        <Setter Property="Padding" Value="32,7,12,7"/>
+    </Style>
+
+    <Style Selector="ListBox.shell-nav-list">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+
+    <Style Selector="ListBox.shell-nav-list ListBoxItem">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="10,8"/>
+        <Setter Property="Margin" Value="0,1"/>
+    </Style>
+
+    <Style Selector="ListBox.shell-nav-list ListBoxItem:selected">
+        <Setter Property="Background" Value="#DCEBFA"/>
+    </Style>
+
+    <Style Selector="ListBox.shell-nav-list ListBoxItem:pointerover">
+        <Setter Property="Background" Value="#EAF2FB"/>
+    </Style>
+
+    <Style Selector="TextBlock.page-title">
+        <Setter Property="FontSize" Value="36"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="#14181F"/>
+    </Style>
+
+    <Style Selector="Button.setting-inline-action">
+        <Setter Property="Background" Value="#FFFFFF"/>
+        <Setter Property="BorderBrush" Value="#CBD5E1"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Foreground" Value="#1F2937"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="18,6"/>
+        <Setter Property="MinWidth" Value="100"/>
+        <Setter Property="MinHeight" Value="32"/>
+    </Style>
+
+    <Style Selector="Button.setting-inline-action:pointerover">
+        <Setter Property="Background" Value="#F8FAFC"/>
     </Style>
 
     <Style Selector="Button">
