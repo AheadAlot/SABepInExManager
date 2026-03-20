@@ -4,7 +4,7 @@
              x:Class="SABepInExManager.Views.HomeDashboardView"
              x:DataType="vm:HomeDashboardViewModel">
 
-    <Grid Margin="12" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
+    <Grid Margin="0" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
         <Border Classes="status-banner missing"
                 Classes.installed="{Binding HomePage.IsBepInExInstalled}">
             <StackPanel Spacing="4">

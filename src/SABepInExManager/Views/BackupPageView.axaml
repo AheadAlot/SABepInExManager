@@ -4,15 +4,13 @@
              x:Class="SABepInExManager.Views.BackupPageView"
              x:DataType="vm:BackupPageViewModel">
 
-    <Grid Margin="12" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
-        <TextBlock Text="备份与恢复" FontSize="22" FontWeight="Bold"/>
-
-        <TextBlock Grid.Row="1"
+    <Grid Margin="0" RowDefinitions="Auto,Auto,*" RowSpacing="12">
+        <TextBlock Grid.Row="0"
                    Text="备份会保存当前游戏目录下被 Mod 管理器接管的文件状态。每次创建备份都会生成一个以 Unix 时间戳命名的新快照目录，恢复时将回滚到最近一次备份。"
                    Classes="secondary-text"
                    TextWrapping="Wrap"/>
 
-        <Button Grid.Row="2"
+        <Button Grid.Row="1"
                 Classes="action-button primary-action"
                 Content="创建备份"
                 IsEnabled="{Binding HomePage.IsBepInExInstalled}"
@@ -23,7 +21,7 @@
                 VerticalContentAlignment="Center"
                 MinHeight="44"/>
 
-        <Border Grid.Row="3" Classes="card">
+        <Border Grid.Row="2" Classes="card">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Spacing="8">
                     <TextBlock Text="暂无备份快照。" Classes="secondary-text" IsVisible="{Binding ShowEmptyState}"/>

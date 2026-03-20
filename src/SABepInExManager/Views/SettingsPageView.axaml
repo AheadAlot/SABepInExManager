@@ -5,7 +5,7 @@
              x:Class="SABepInExManager.Views.SettingsPageView"
              x:DataType="vm:SettingsPageViewModel">
 
-    <Grid Margin="12" RowDefinitions="Auto,Auto,*" RowSpacing="12">
+    <Grid Margin="0" RowDefinitions="Auto,Auto,*" RowSpacing="12">
 
         <Border Classes="card">
             <StackPanel Spacing="10">
