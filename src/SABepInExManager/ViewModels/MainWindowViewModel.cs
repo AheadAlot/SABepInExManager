@@ -778,6 +778,27 @@ public class HomePageViewModel : ViewModelBase
         await InstallBepInExInternalAsync(forceReinstall: true);
     }
 
+    public async Task UpdateAutoUpdaterAsync()
+    {
+        try
+        {
+            ValidateGameRootOrThrow();
+            AppendDebugLog($"开始执行 AutoUpdater 更新：GameRootPath={GameRootPath}", reset: false);
+            AppendLog("开始更新 AutoUpdater（覆盖现有文件）...", reset: true);
+
+            var result = await _bepInExService.UpdateAutoUpdaterAsync(GameRootPath, message => AppendLog(message));
+
+            AppendLog(result.Message);
+            AppendDebugLog($"AutoUpdater 更新结束：success={result.Success}", reset: false);
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"更新 AutoUpdater 失败：{ex.Message}");
+        }
+
+        await SaveConfigAsync();
+    }
+
     private async Task InstallBepInExInternalAsync(bool forceReinstall)
     {
         try

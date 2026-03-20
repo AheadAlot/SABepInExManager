@@ -184,6 +184,39 @@ public class BepInExService
         return await InstallFromGitHubAsync(gameRoot, progressCallback);
     }
 
+    public Task<InstallResult> UpdateAutoUpdaterAsync(string gameRoot, Action<string>? progressCallback = null)
+    {
+        void Report(string message) => progressCallback?.Invoke(message);
+
+        if (string.IsNullOrWhiteSpace(gameRoot) || !Directory.Exists(gameRoot))
+        {
+            return Task.FromResult(new InstallResult { Success = false, Message = "游戏根目录无效。" });
+        }
+
+        try
+        {
+            Report("正在部署 AutoUpdater...");
+            var installed = TryInstallBundledAutoUpdater(gameRoot, out var message);
+            Report(message);
+
+            return Task.FromResult(new InstallResult
+            {
+                Success = installed,
+                Message = installed
+                    ? "AutoUpdater 更新完成，已覆盖写入游戏目录。"
+                    : $"AutoUpdater 更新失败：{message}",
+            });
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(new InstallResult
+            {
+                Success = false,
+                Message = $"AutoUpdater 更新失败：{ex.Message}",
+            });
+        }
+    }
+
     private static async Task<string> GetLatestReleaseJsonAsync(string repo)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repo}/releases/latest");

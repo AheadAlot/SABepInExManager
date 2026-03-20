@@ -100,6 +100,22 @@
 
                     <Border Classes="setting-dropdown-row">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <icons:SymbolIcon Symbol="ArrowSync" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="更新 AutoUpdater" Classes="setting-title"/>
+                                <TextBlock Text="将重新部署 AutoUpdater 到游戏目录并覆盖已有文件。"
+                                           Classes="setting-desc"/>
+                            </StackPanel>
+                            <Button Grid.Column="2"
+                                    Classes="action-button secondary-action"
+                                    VerticalAlignment="Center"
+                                    Content="执行"
+                                    Click="OnUpdateAutoUpdaterClicked"/>
+                        </Grid>
+                    </Border>
+
+                    <Border Classes="setting-dropdown-row">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
                             <icons:SymbolIcon Symbol="AppsSettings" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
                             <StackPanel Grid.Column="1" Spacing="2">
                                 <TextBlock Text="重新安装 BepInEx" Classes="setting-title"/>

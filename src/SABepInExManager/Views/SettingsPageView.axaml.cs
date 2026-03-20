@@ -140,5 +140,15 @@ public partial class SettingsPageView : UserControl
 
         await vm.HomePage.ClearModVersionCacheAsync();
     }
+
+    private async void OnUpdateAutoUpdaterClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (DataContext is not SettingsPageViewModel vm)
+        {
+            return;
+        }
+
+        await vm.HomePage.UpdateAutoUpdaterAsync();
+    }
 }
 
