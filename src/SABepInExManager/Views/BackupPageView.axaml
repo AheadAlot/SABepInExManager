@@ -10,16 +10,23 @@
                    Classes="secondary-text"
                    TextWrapping="Wrap"/>
 
-        <Button Grid.Row="1"
-                Classes="action-button primary-action"
-                Content="创建备份"
-                IsEnabled="{Binding HomePage.IsBepInExInstalled}"
-                Command="{Binding HomePage.CreateBaselineCommand}"
-                BorderThickness="0"
-                HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Center"
-                VerticalContentAlignment="Center"
-                MinHeight="44"/>
+        <Border Grid.Row="1" Classes="setting-row">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+                <StackPanel Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="创建备份" Classes="setting-title"/>
+                    <TextBlock Text="将当前受管理文件状态保存为快照，用于后续快速恢复。"
+                               Classes="setting-desc"/>
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Classes="action-button primary-action"
+                        Content="创建备份"
+                        IsEnabled="{Binding HomePage.IsBepInExInstalled}"
+                        Command="{Binding HomePage.CreateBaselineCommand}"
+                        VerticalAlignment="Center"
+                        MinWidth="100"/>
+            </Grid>
+        </Border>
 
         <Border Grid.Row="2" Classes="card">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">

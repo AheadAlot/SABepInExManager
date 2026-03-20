@@ -10,16 +10,23 @@
                    Classes="secondary-text"
                    TextWrapping="Wrap"/>
 
-        <Button Grid.Row="1"
-                Classes="action-button primary-action"
-                Content="检查冲突"
-                IsEnabled="{Binding HomePage.IsBepInExInstalled}"
-                Command="{Binding HomePage.PreviewConflictsCommand}"
-                BorderThickness="0"
-                HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Center"
-                VerticalContentAlignment="Center"
-                MinHeight="44"/>
+        <Border Grid.Row="1" Classes="setting-row">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+                <StackPanel Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="检查冲突" Classes="setting-title"/>
+                    <TextBlock Text="扫描各模组是否存在同名同路径文件，并展示最终生效来源。"
+                               Classes="setting-desc"/>
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Classes="action-button primary-action"
+                        Content="检查冲突"
+                        IsEnabled="{Binding HomePage.IsBepInExInstalled}"
+                        Command="{Binding HomePage.PreviewConflictsCommand}"
+                        VerticalAlignment="Center"
+                        MinWidth="100"/>
+            </Grid>
+        </Border>
 
         <Border Grid.Row="2" Classes="card" Padding="10">
             <Grid RowDefinitions="Auto,*" RowSpacing="8">

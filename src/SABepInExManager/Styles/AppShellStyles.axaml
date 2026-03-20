@@ -87,10 +87,6 @@
         <Setter Property="MinHeight" Value="32"/>
     </Style>
 
-    <Style Selector="Button.setting-inline-action:pointerover">
-        <Setter Property="Background" Value="#F8FAFC"/>
-    </Style>
-
     <Style Selector="Button">
         <Setter Property="Foreground" Value="#FFFFFF"/>
         <Setter Property="Background" Value="#2563EB"/>
@@ -98,17 +94,75 @@
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="12,6"/>
         <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="Button:pointerover">
+        <Setter Property="Background" Value="#1D4ED8"/>
+        <Setter Property="BorderBrush" Value="#1E40AF"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button:pressed">
+        <Setter Property="Background" Value="#1E40AF"/>
+        <Setter Property="BorderBrush" Value="#1E3A8A"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
     </Style>
 
     <Style Selector="Button.action-button">
         <Setter Property="Padding" Value="10,6"/>
         <Setter Property="MinHeight" Value="32"/>
+        <Setter Property="MinWidth" Value="100"/>
         <Setter Property="CornerRadius" Value="6"/>
     </Style>
 
     <Style Selector="Button.action-button.primary-action">
         <Setter Property="Background" Value="#2563EB"/>
         <Setter Property="BorderBrush" Value="#1D4ED8"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.action-button.primary-action TextBlock">
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.action-button.primary-action /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#2563EB"/>
+        <Setter Property="BorderBrush" Value="#1D4ED8"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.action-button.primary-action:pointerover">
+        <Setter Property="Background" Value="#1D4ED8"/>
+        <Setter Property="BorderBrush" Value="#1E40AF"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.action-button.primary-action:pointerover TextBlock">
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.action-button.primary-action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#1D4ED8"/>
+        <Setter Property="BorderBrush" Value="#1E40AF"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.action-button.primary-action:pressed">
+        <Setter Property="Background" Value="#1E40AF"/>
+        <Setter Property="BorderBrush" Value="#1E3A8A"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.action-button.primary-action:pressed TextBlock">
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.action-button.primary-action:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#1E40AF"/>
+        <Setter Property="BorderBrush" Value="#1E3A8A"/>
         <Setter Property="Foreground" Value="#FFFFFF"/>
     </Style>
 
@@ -124,9 +178,51 @@
         <Setter Property="Foreground" Value="#FFFFFF"/>
     </Style>
 
-    <Style Selector="Button.danger-action">
+    <Style Selector="Button.action-button.danger-action">
         <Setter Property="Background" Value="#DC2626"/>
         <Setter Property="BorderBrush" Value="#B91C1C"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.action-button.danger-action TextBlock">
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.action-button.danger-action /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#DC2626"/>
+        <Setter Property="BorderBrush" Value="#B91C1C"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.action-button.danger-action:pointerover">
+        <Setter Property="Background" Value="#B91C1C"/>
+        <Setter Property="BorderBrush" Value="#991B1B"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.action-button.danger-action:pointerover TextBlock">
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.action-button.danger-action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#B91C1C"/>
+        <Setter Property="BorderBrush" Value="#991B1B"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.action-button.danger-action:pressed">
+        <Setter Property="Background" Value="#991B1B"/>
+        <Setter Property="BorderBrush" Value="#7F1D1D"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.action-button.danger-action:pressed TextBlock">
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.action-button.danger-action:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#991B1B"/>
+        <Setter Property="BorderBrush" Value="#7F1D1D"/>
         <Setter Property="Foreground" Value="#FFFFFF"/>
     </Style>
 

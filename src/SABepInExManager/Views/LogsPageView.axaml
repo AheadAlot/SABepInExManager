@@ -10,15 +10,22 @@
                    Classes="secondary-text"
                    TextWrapping="Wrap"/>
 
-        <Button Grid.Row="1"
-                Classes="action-button primary-action"
-                Content="清空日志"
-                Command="{Binding HomePage.ClearLogsCommand}"
-                BorderThickness="0"
-                HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Center"
-                VerticalContentAlignment="Center"
-                MinHeight="44"/>
+        <Border Grid.Row="1" Classes="setting-row">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+                <StackPanel Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="清空日志" Classes="setting-title"/>
+                    <TextBlock Text="删除当前界面显示的日志记录，不影响模组安装与配置数据。"
+                               Classes="setting-desc"/>
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Classes="action-button primary-action"
+                        Content="清空日志"
+                        Command="{Binding HomePage.ClearLogsCommand}"
+                        VerticalAlignment="Center"
+                        MinWidth="100"/>
+            </Grid>
+        </Border>
 
         <ListBox Grid.Row="2" ItemsSource="{Binding HomePage.Logs}">
             <ListBox.ItemTemplate>

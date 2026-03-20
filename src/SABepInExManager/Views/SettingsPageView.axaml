@@ -97,7 +97,7 @@
                                        Classes="setting-desc"/>
                         </StackPanel>
                         <Button Grid.Column="2"
-                                Classes="setting-inline-action"
+                                Classes="action-button danger-action"
                                 VerticalAlignment="Center"
                                 Content="执行"
                                 Click="OnReinstallBepInExClicked"/>
@@ -113,7 +113,7 @@
                                        Classes="setting-desc"/>
                         </StackPanel>
                         <Button Grid.Column="2"
-                                Classes="setting-inline-action"
+                                Classes="action-button danger-action"
                                 VerticalAlignment="Center"
                                 Content="执行"
                                 Click="OnDeleteAllBackupsClicked"/>
