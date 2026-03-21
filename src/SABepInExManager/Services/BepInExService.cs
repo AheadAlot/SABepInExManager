@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -14,6 +15,8 @@ public class BepInExService
 {
     private const string AutoUpdaterFileName = "SABepInExManager.AutoUpdater.dll";
     private const string AutoUpdaterSubdirectoryName = "SABepInExManager_AutoUpdater";
+    private const string BepInExConfigRelativePath = "BepInEx/config/BepInEx.cfg";
+    private const string ConfigurationManagerConfigRelativePath = "BepInEx/config/com.bepis.bepinex.configurationmanager.cfg";
 
     private static readonly HttpClient HttpClient = new()
     {
@@ -38,6 +41,205 @@ public class BepInExService
         var text = File.ReadAllText(doorstop);
         return text.Contains("target_assembly", StringComparison.OrdinalIgnoreCase)
                && text.Contains("BepInEx.Preloader.dll", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public BepInExDiagnosticResult RunDiagnostics(string gameRoot, string? referencePayloadRoot = null)
+    {
+        var issues = new List<BepInExDiagnosticIssue>();
+
+        if (string.IsNullOrWhiteSpace(gameRoot) || !Directory.Exists(gameRoot))
+        {
+            issues.Add(new BepInExDiagnosticIssue
+            {
+                Key = "invalid_game_root",
+                Title = "游戏根目录无效",
+                Description = "当前未配置有效的游戏根目录，无法执行 BepInEx 诊断。",
+                Severity = BepInExDiagnosticIssueSeverity.Error,
+                SuggestedAction = "请先在设置页面选择正确的游戏根目录后再执行诊断。",
+                CanFix = false,
+            });
+
+            return new BepInExDiagnosticResult
+            {
+                IsInstalled = false,
+                ExpectedFileCount = 0,
+                MatchedFileCount = 0,
+                BepInExVersionText = "未知",
+                ConfigurationManagerVersionText = "未安装",
+                DoorstopVersionText = "未知",
+                LocalVersionText = "未知",
+                Issues = issues,
+            };
+        }
+
+        var payloadRoot = string.IsNullOrWhiteSpace(referencePayloadRoot)
+            ? FindBackupBepInExPayloadRoot()
+            : referencePayloadRoot;
+        if (string.IsNullOrWhiteSpace(payloadRoot) || !Directory.Exists(payloadRoot))
+        {
+            issues.Add(new BepInExDiagnosticIssue
+            {
+                Key = "reference_payload_missing",
+                Title = "缺少参考安装包",
+                Description = "未找到 third_party/BepInEx 参考安装文件，无法按完整清单校验。",
+                Severity = BepInExDiagnosticIssueSeverity.Error,
+                SuggestedAction = "点击“修复”将执行重装 BepInEx。",
+                CanFix = true,
+            });
+
+            return new BepInExDiagnosticResult
+            {
+                IsInstalled = IsInstalled(gameRoot),
+                ExpectedFileCount = 0,
+                MatchedFileCount = 0,
+                BepInExVersionText = ResolveBepInExVersion(gameRoot),
+                ConfigurationManagerVersionText = ResolveConfigurationManagerVersion(gameRoot),
+                DoorstopVersionText = ResolveDoorstopVersion(gameRoot),
+                LocalVersionText = ResolveLocalVersion(gameRoot),
+                Issues = issues,
+            };
+        }
+
+        var expectedFiles = Directory
+            .EnumerateFiles(payloadRoot, "*", SearchOption.AllDirectories)
+            .Select(path => NormalizeRelativePath(Path.GetRelativePath(payloadRoot, path)))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        EnsureRequiredDiagnosticFiles(expectedFiles);
+
+        var missingFiles = new List<string>();
+        var matchedFileCount = 0;
+
+        foreach (var relativeFile in expectedFiles)
+        {
+            var fullPath = Path.Combine(gameRoot, relativeFile.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(fullPath))
+            {
+                matchedFileCount++;
+                continue;
+            }
+
+            missingFiles.Add(relativeFile);
+        }
+
+        if (missingFiles.Count > 0)
+        {
+            var preview = string.Join("、", missingFiles.Take(6));
+            var suffix = missingFiles.Count > 6 ? " 等" : string.Empty;
+            issues.Add(new BepInExDiagnosticIssue
+            {
+                Key = "missing_files",
+                Title = "检测到 BepInEx 文件缺失",
+                Description = $"缺失文件名：{preview}{suffix}",
+                Severity = BepInExDiagnosticIssueSeverity.Error,
+                SuggestedAction = "点击“修复”将把缺失文件复制到游戏目录对应位置。",
+            });
+        }
+
+        if (!IsInstalled(gameRoot))
+        {
+            issues.Add(new BepInExDiagnosticIssue
+            {
+                Key = "install_check_failed",
+                Title = "安装完整性校验未通过",
+                Description = "关键文件或 doorstop 配置异常，当前环境可能无法正常加载 BepInEx。",
+                Severity = BepInExDiagnosticIssueSeverity.Error,
+                SuggestedAction = "点击“修复”将执行重装 BepInEx。",
+            });
+        }
+
+        var localVersion = ResolveLocalVersion(gameRoot);
+        if (string.Equals(localVersion, "未知", StringComparison.Ordinal))
+        {
+            issues.Add(new BepInExDiagnosticIssue
+            {
+                Key = "version_unknown",
+                Title = "未识别到版本信息",
+                Description = "未在游戏目录中读取到 .doorstop_version 或可用的核心 DLL 文件版本。",
+                Severity = BepInExDiagnosticIssueSeverity.Warning,
+                SuggestedAction = "点击“修复”将执行重装 BepInEx。",
+            });
+        }
+
+        return new BepInExDiagnosticResult
+        {
+            IsInstalled = issues.All(x => x.Severity != BepInExDiagnosticIssueSeverity.Error),
+            ExpectedFileCount = expectedFiles.Count,
+            MatchedFileCount = matchedFileCount,
+            BepInExVersionText = ResolveBepInExVersion(gameRoot),
+            ConfigurationManagerVersionText = ResolveConfigurationManagerVersion(gameRoot),
+            DoorstopVersionText = ResolveDoorstopVersion(gameRoot),
+            LocalVersionText = localVersion,
+            Issues = issues,
+        };
+    }
+
+    public InstallResult RepairMissingFilesFromReference(string gameRoot, string? referencePayloadRoot = null)
+    {
+        if (string.IsNullOrWhiteSpace(gameRoot) || !Directory.Exists(gameRoot))
+        {
+            return new InstallResult { Success = false, Message = "游戏根目录无效。" };
+        }
+
+        var payloadRoot = string.IsNullOrWhiteSpace(referencePayloadRoot)
+            ? FindBackupBepInExPayloadRoot()
+            : referencePayloadRoot;
+
+        if (string.IsNullOrWhiteSpace(payloadRoot) || !Directory.Exists(payloadRoot))
+        {
+            return new InstallResult
+            {
+                Success = false,
+                Message = "未找到参考安装包（third_party/BepInEx），无法执行文件补齐。",
+            };
+        }
+
+        var expectedFiles = Directory
+            .EnumerateFiles(payloadRoot, "*", SearchOption.AllDirectories)
+            .Select(path => NormalizeRelativePath(Path.GetRelativePath(payloadRoot, path)))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        EnsureRequiredDiagnosticFiles(expectedFiles);
+
+        var copiedCount = 0;
+        foreach (var relativeFile in expectedFiles)
+        {
+            var sourcePath = ResolveRepairSourcePath(payloadRoot, relativeFile);
+            var destinationPath = Path.Combine(gameRoot, relativeFile.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(destinationPath))
+            {
+                continue;
+            }
+
+            var destinationDir = Path.GetDirectoryName(destinationPath);
+            if (!string.IsNullOrWhiteSpace(destinationDir))
+            {
+                Directory.CreateDirectory(destinationDir);
+            }
+
+            if (!string.IsNullOrWhiteSpace(sourcePath) && File.Exists(sourcePath))
+            {
+                File.Copy(sourcePath, destinationPath, overwrite: false);
+            }
+            else if (string.Equals(relativeFile, ConfigurationManagerConfigRelativePath, StringComparison.OrdinalIgnoreCase))
+            {
+                File.WriteAllText(destinationPath, "# Auto-created by SABepInExManager for diagnostic repair.\n");
+            }
+            else
+            {
+                continue;
+            }
+
+            copiedCount++;
+        }
+
+        return new InstallResult
+        {
+            Success = true,
+            Message = copiedCount > 0
+                ? $"已补齐缺失文件 {copiedCount} 项。"
+                : "未检测到可补齐的缺失文件。",
+        };
     }
 
     public async Task<InstallResult> InstallFromGitHubAsync(string gameRoot, Action<string>? progressCallback = null)
@@ -261,6 +463,178 @@ public class BepInExService
         }
 
         return null;
+    }
+
+    private static string ResolveLocalVersion(string gameRoot)
+    {
+        var bepinexVersion = ResolveBepInExVersion(gameRoot);
+        if (!string.Equals(bepinexVersion, "未知", StringComparison.Ordinal))
+        {
+            return bepinexVersion;
+        }
+
+        var doorstopVersion = ResolveDoorstopVersion(gameRoot);
+        if (!string.Equals(doorstopVersion, "未知", StringComparison.Ordinal))
+        {
+            return doorstopVersion;
+        }
+
+        return "未知";
+    }
+
+    private static string ResolveBepInExVersion(string gameRoot)
+    {
+        var coreDll = Path.Combine(gameRoot, "BepInEx", "core", "BepInEx.dll");
+        if (File.Exists(coreDll))
+        {
+            var version = System.Diagnostics.FileVersionInfo.GetVersionInfo(coreDll).FileVersion;
+            if (!string.IsNullOrWhiteSpace(version))
+            {
+                return version;
+            }
+        }
+
+        var doorstopVersionPath = Path.Combine(gameRoot, ".doorstop_version");
+        if (File.Exists(doorstopVersionPath))
+        {
+            var text = File.ReadAllText(doorstopVersionPath).Trim();
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                return text;
+            }
+        }
+
+        var changelogPath = Path.Combine(gameRoot, "changelog.txt");
+        if (File.Exists(changelogPath))
+        {
+            var firstLine = File
+                .ReadLines(changelogPath)
+                .FirstOrDefault(line => !string.IsNullOrWhiteSpace(line))
+                ?.Trim();
+            if (!string.IsNullOrWhiteSpace(firstLine))
+            {
+                return firstLine;
+            }
+        }
+
+        return "未知";
+    }
+
+    private static string ResolveConfigurationManagerVersion(string gameRoot)
+    {
+        var pluginsRoot = Path.Combine(gameRoot, "BepInEx", "plugins");
+        var candidateDllPaths = new[]
+        {
+            Path.Combine(gameRoot, "BepInEx", "plugins", "ConfigurationManager", "ConfigurationManager.dll"),
+        };
+
+        var dllPath = candidateDllPaths.FirstOrDefault(File.Exists)
+                      ?? (Directory.Exists(pluginsRoot)
+                          ? Directory
+                              .EnumerateFiles(
+                                  pluginsRoot,
+                                  "*ConfigurationManager*.dll",
+                                  SearchOption.AllDirectories)
+                              .FirstOrDefault()
+                          : null);
+
+        if (string.IsNullOrWhiteSpace(dllPath) || !File.Exists(dllPath))
+        {
+            return "未安装";
+        }
+
+        var fileVersion = System.Diagnostics.FileVersionInfo.GetVersionInfo(dllPath).FileVersion;
+        if (!string.IsNullOrWhiteSpace(fileVersion))
+        {
+            return fileVersion;
+        }
+
+        return "已安装（版本未知）";
+    }
+
+    private static string ResolveDoorstopVersion(string gameRoot)
+    {
+        var doorstopVersionPath = Path.Combine(gameRoot, ".doorstop_version");
+        if (File.Exists(doorstopVersionPath))
+        {
+            var text = File.ReadAllText(doorstopVersionPath).Trim();
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                return text;
+            }
+        }
+
+        var winHttpPath = Path.Combine(gameRoot, "winhttp.dll");
+        if (File.Exists(winHttpPath))
+        {
+            var version = System.Diagnostics.FileVersionInfo.GetVersionInfo(winHttpPath).FileVersion;
+            if (!string.IsNullOrWhiteSpace(version))
+            {
+                return version;
+            }
+        }
+
+        return "未知";
+    }
+
+    private static string NormalizeRelativePath(string relativePath)
+        => relativePath.Replace('\\', '/');
+
+    private static void EnsureRequiredDiagnosticFiles(List<string> expectedFiles)
+    {
+        if (!expectedFiles.Contains(BepInExConfigRelativePath, StringComparer.OrdinalIgnoreCase))
+        {
+            expectedFiles.Add(BepInExConfigRelativePath);
+        }
+
+        if (!expectedFiles.Contains(ConfigurationManagerConfigRelativePath, StringComparer.OrdinalIgnoreCase))
+        {
+            expectedFiles.Add(ConfigurationManagerConfigRelativePath);
+        }
+    }
+
+    private static string? ResolveRepairSourcePath(string payloadRoot, string relativeFile)
+    {
+        var normalized = NormalizeRelativePath(relativeFile);
+        var sourcePath = Path.Combine(payloadRoot, normalized.Replace('/', Path.DirectorySeparatorChar));
+        if (File.Exists(sourcePath))
+        {
+            return sourcePath;
+        }
+
+        if (string.Equals(normalized, BepInExConfigRelativePath, StringComparison.OrdinalIgnoreCase))
+        {
+            return ResolveBundledBepInExConfigSourcePath();
+        }
+
+        if (string.Equals(normalized, ConfigurationManagerConfigRelativePath, StringComparison.OrdinalIgnoreCase))
+        {
+            return ResolveBundledConfigurationManagerConfigSourcePath();
+        }
+
+        return null;
+    }
+
+    private static string? ResolveBundledBepInExConfigSourcePath()
+    {
+        var sourceCandidates = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "configs", "BepInEx.cfg"),
+            Path.Combine(Directory.GetCurrentDirectory(), "configs", "BepInEx.cfg"),
+        };
+
+        return sourceCandidates.FirstOrDefault(File.Exists);
+    }
+
+    private static string? ResolveBundledConfigurationManagerConfigSourcePath()
+    {
+        var sourceCandidates = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "third_party", "BepInEx.ConfigurationManager", "BepInEx", "config", "com.bepis.bepinex.configurationmanager.cfg"),
+            Path.Combine(Directory.GetCurrentDirectory(), "third_party", "BepInEx.ConfigurationManager", "BepInEx", "config", "com.bepis.bepinex.configurationmanager.cfg"),
+        };
+
+        return sourceCandidates.FirstOrDefault(File.Exists);
     }
 
     private static string? PickConfigurationManagerAssetUrl(string releaseJson)

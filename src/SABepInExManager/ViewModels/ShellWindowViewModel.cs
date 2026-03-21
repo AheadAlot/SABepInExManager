@@ -14,6 +14,7 @@ public class ShellWindowViewModel : ViewModelBase
     private readonly ModsPageViewModel _modsPageViewModel;
     private readonly ConflictsPageViewModel _conflictsPageViewModel;
     private readonly BackupPageViewModel _backupPageViewModel;
+    private readonly DiagnosticsPageViewModel _diagnosticsPageViewModel;
     private readonly LogsPageViewModel _logsPageViewModel;
     private readonly SettingsPageViewModel _settingsPageViewModel;
     private readonly AboutPageViewModel _aboutPageViewModel;
@@ -29,6 +30,7 @@ public class ShellWindowViewModel : ViewModelBase
         _modsPageViewModel = new ModsPageViewModel(_homePageViewModel);
         _conflictsPageViewModel = new ConflictsPageViewModel(_homePageViewModel);
         _backupPageViewModel = new BackupPageViewModel(_homePageViewModel);
+        _diagnosticsPageViewModel = new DiagnosticsPageViewModel(_homePageViewModel);
         _logsPageViewModel = new LogsPageViewModel(_homePageViewModel);
         _settingsPageViewModel = new SettingsPageViewModel(_homePageViewModel);
         _aboutPageViewModel = new AboutPageViewModel();
@@ -39,6 +41,7 @@ public class ShellWindowViewModel : ViewModelBase
             new NavigationItemViewModel("mods", "Mod 管理", Symbol.PuzzlePiece, _modsPageViewModel),
             new NavigationItemViewModel("conflicts", "冲突预览", Symbol.Warning, _conflictsPageViewModel),
             new NavigationItemViewModel("backup", "备份与恢复", Symbol.FolderOpen, _backupPageViewModel),
+            new NavigationItemViewModel("diagnostics", "BepInEx 诊断", Symbol.Search, _diagnosticsPageViewModel),
             new NavigationItemViewModel("logs", "日志", Symbol.Notebook, _logsPageViewModel),
             new NavigationItemViewModel("settings", "设置", Symbol.Settings, _settingsPageViewModel),
             new NavigationItemViewModel("about", "关于", Symbol.Info, _aboutPageViewModel),

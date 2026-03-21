@@ -84,22 +84,6 @@
 
                     <Border Classes="setting-dropdown-row">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                            <icons:SymbolIcon Symbol="DatabaseSearch" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
-                            <StackPanel Grid.Column="1" Spacing="2">
-                                <TextBlock Text="清空模组版本缓存" Classes="setting-title"/>
-                                <TextBlock Text="删除本地缓存的模组版本签名缓存，下次启动游戏会重新计算签名。"
-                                           Classes="setting-desc"/>
-                            </StackPanel>
-                            <Button Grid.Column="2"
-                                    Classes="setting-inline-action"
-                                    VerticalAlignment="Center"
-                                    Content="执行"
-                                    Click="OnClearModVersionCacheClicked"/>
-                        </Grid>
-                    </Border>
-
-                    <Border Classes="setting-dropdown-row">
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
                             <icons:SymbolIcon Symbol="ArrowSync" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
                             <StackPanel Grid.Column="1" Spacing="2">
                                 <TextBlock Text="更新 AutoUpdater" Classes="setting-title"/>
@@ -111,6 +95,23 @@
                                     VerticalAlignment="Center"
                                     Content="执行"
                                     Click="OnUpdateAutoUpdaterClicked"/>
+                        </Grid>
+                    </Border>
+
+
+                    <Border Classes="setting-dropdown-row">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <icons:SymbolIcon Symbol="DatabaseSearch" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="清空模组版本缓存" Classes="setting-title"/>
+                                <TextBlock Text="删除本地缓存的模组版本签名缓存，下次启动游戏会重新计算签名。"
+                                           Classes="setting-desc"/>
+                            </StackPanel>
+                            <Button Grid.Column="2"
+                                    Classes="setting-inline-action"
+                                    VerticalAlignment="Center"
+                                    Content="执行"
+                                    Click="OnClearModVersionCacheClicked"/>
                         </Grid>
                     </Border>
 
