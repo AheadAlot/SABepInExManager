@@ -75,6 +75,8 @@ public class BepInExServiceDiagnosticsTests
         fx.WriteText($"{rootName}/changelog.txt", "BepInEx 4.0.0");
         fx.WriteText($"{rootName}/BepInEx/core/BepInEx.Preloader.dll", "preloader");
         fx.WriteText($"{rootName}/BepInEx/core/BepInEx.Harmony.dll", "harmony");
+        fx.WriteText($"{rootName}/BepInEx/config/BepInEx.cfg", "# bepinex config");
+        fx.WriteText($"{rootName}/BepInEx/config/com.bepis.bepinex.configurationmanager.cfg", "# configuration manager config");
         fx.WriteText($"{rootName}/BepInEx/plugins/Sample.dll", "plugin");
 
         if (includeDoorstopVersion)
