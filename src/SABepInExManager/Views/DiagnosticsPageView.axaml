@@ -1,0 +1,113 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SABepInExManager.ViewModels"
+             xmlns:icons="using:FluentIcons.Avalonia"
+             x:Class="SABepInExManager.Views.DiagnosticsPageView"
+             x:DataType="vm:DiagnosticsPageViewModel">
+
+    <Grid Margin="0" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
+        <TextBlock Grid.Row="0"
+                   Text="用于检查当前游戏根目录中 BepInEx 安装是否完整，并展示本地版本信息。点击“诊断”后将按参考安装文件清单进行比对。"
+                   Classes="secondary-text"
+                   TextWrapping="Wrap"/>
+
+        <Border Grid.Row="1" Classes="setting-row">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+                <StackPanel Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="执行诊断" Classes="setting-title"/>
+                    <TextBlock Text="检查 BepInEx 文件完整性并读取版本信息。"
+                               Classes="setting-desc"/>
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Classes="action-button primary-action"
+                        Content="诊断"
+                        Command="{Binding RunDiagnosticsCommand}"
+                        VerticalAlignment="Center"
+                        MinWidth="100"/>
+            </Grid>
+        </Border>
+
+        <Expander Grid.Row="2" Classes="settings-expander" IsExpanded="True" HorizontalAlignment="Stretch">
+            <Expander.Header>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <icons:SymbolIcon Symbol="Info" FontSize="18" VerticalAlignment="Center" Foreground="#4B5563"/>
+                    <TextBlock Text="诊断信息" Classes="settings-expander-title" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Expander.Header>
+
+            <Border Classes="settings-expander-content">
+                <StackPanel Spacing="0">
+                    <Border Padding="14,10">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <TextBlock Text="诊断结果" Classes="setting-title" Margin="26,0,0,0"/>
+                            <TextBlock Grid.Column="1" Text="{Binding InstallStateText}" Classes="setting-desc" HorizontalAlignment="Right" TextAlignment="Right"/>
+                        </Grid>
+                    </Border>
+
+                    <Border Padding="14,10">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <TextBlock Text="BepInEx版本" Classes="setting-title" Margin="26,0,0,0"/>
+                            <TextBlock Grid.Column="1" Text="{Binding BepInExVersionText}" Classes="setting-desc" HorizontalAlignment="Right" TextAlignment="Right"/>
+                        </Grid>
+                    </Border>
+
+                    <Border Padding="14,10">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <TextBlock Text="BepInEx.ConfigurationManager版本" Classes="setting-title" Margin="26,0,0,0"/>
+                            <TextBlock Grid.Column="1" Text="{Binding ConfigurationManagerVersionText}" Classes="setting-desc" HorizontalAlignment="Right" TextAlignment="Right"/>
+                        </Grid>
+                    </Border>
+
+                    <Border Padding="14,10">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <TextBlock Text="doorstop版本" Classes="setting-title" Margin="26,0,0,0"/>
+                            <TextBlock Grid.Column="1" Text="{Binding DoorstopVersionText}" Classes="setting-desc" HorizontalAlignment="Right" TextAlignment="Right"/>
+                        </Grid>
+                    </Border>
+
+                    <Border Padding="14,10">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <TextBlock Text="文件匹配数量" Classes="setting-title" Margin="26,0,0,0"/>
+                            <TextBlock Grid.Column="1" Text="{Binding FileMatchText}" Classes="setting-desc" HorizontalAlignment="Right" TextAlignment="Right"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </Expander>
+
+        <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="8">
+                <ItemsControl ItemsSource="{Binding Issues}" IsVisible="{Binding ShowIssueList}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:DiagnosticIssueItemViewModel">
+                            <Border Classes="card" Padding="10" Margin="0,0,0,8">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding Description}" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding SuggestedAction, StringFormat=修复操作：{0}}" Classes="secondary-text" TextWrapping="Wrap"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <Button Classes="action-button secondary-action"
+                                                Content="修复"
+                                                Tag="{Binding .}"
+                                                IsVisible="{Binding ShowSafeFixButton}"
+                                                Click="OnFixIssueClicked"/>
+                                        <Button Classes="action-button danger-action"
+                                                Content="修复"
+                                                Tag="{Binding .}"
+                                                IsVisible="{Binding ShowDangerousFixButton}"
+                                                Click="OnFixIssueClicked"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>
+
