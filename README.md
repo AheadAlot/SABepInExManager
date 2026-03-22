@@ -22,12 +22,12 @@
 
 ## 下载
 
-打开 Releases 页面，选择最新版本下载`.exe`文件即可。
+打开[Releases 页面](https://github.com/AheadAlot/SABepInExManager/releases/latest)下载所用操作系统`.zip`文件即可。
 
 运行：
-   - Windows：直接双击运行 `.exe`
-   - macOS：首次运行可能受 Gatekeeper 限制；可在“系统设置 -> 隐私与安全性”中允许，或右键打开。
-   - Linux/macOS：未测试，确保`chmod +x`后再运行。
+   - Windows：下载解压后直接双击运行 `.exe`
+   - macOS：下载解压后，首次运行可能受 Gatekeeper 限制；可在“系统设置 -> 隐私与安全性”中允许，或右键打开。
+   - Linux/macOS：未测试，下载解压后确保`chmod +x`再运行。
 
 ## 部分程序截图
 
