@@ -98,6 +98,31 @@
                         </Grid>
                     </Border>
 
+                    <Border Classes="setting-dropdown-row">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <icons:SymbolIcon Symbol="CloudCheckmark" FontSize="18" VerticalAlignment="Top" Foreground="#2563EB"/>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="检查应用更新" Classes="setting-title"/>
+                                <TextBlock Text="检查 GitHub Release 是否有新版本。" Classes="setting-desc"/>
+                                <TextBlock Text="{Binding UpdateStatusText}" Classes="setting-desc" Foreground="#1D4ED8"/>
+                                <TextBlock Classes="setting-desc">
+                                    <Run Text="当前版本："/>
+                                    <Run Text="{Binding CurrentVersionText}"/>
+                                    <Run Text="   最新版本："/>
+                                    <Run Text="{Binding LatestVersionText}"/>
+                                    <Run Text="   上次检查："/>
+                                    <Run Text="{Binding LastCheckedText}"/>
+                                </TextBlock>
+                            </StackPanel>
+                            <Button Grid.Column="2"
+                                    Classes="action-button primary-action"
+                                    VerticalAlignment="Center"
+                                    Content="检查更新"
+                                    Command="{Binding CheckForUpdatesCommand}"
+                                    IsEnabled="{Binding CanCheckForUpdates}"/>
+                        </Grid>
+                    </Border>
+
 
                     <Border Classes="setting-dropdown-row">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">

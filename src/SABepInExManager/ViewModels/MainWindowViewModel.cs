@@ -250,12 +250,11 @@ public class HomePageViewModel : ViewModelBase
 
     public async Task SaveConfigAsync()
     {
-        await _configService.SaveAsync(new AppConfig
-        {
-            GameRootPath = GameRootPath,
-            WorkshopContentPath = WorkshopContentPath,
-            EnableDebugLogging = EnableDebugLogging,
-        });
+        var existingConfig = await _configService.LoadAsync();
+        existingConfig.GameRootPath = GameRootPath;
+        existingConfig.WorkshopContentPath = WorkshopContentPath;
+        existingConfig.EnableDebugLogging = EnableDebugLogging;
+        await _configService.SaveAsync(existingConfig);
 
         AppendDebugLog("配置已保存。", reset: false);
     }
