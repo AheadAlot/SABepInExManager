@@ -4,6 +4,8 @@ namespace SABepInExManager.ViewModels;
 
 public class NavigationItemViewModel : ViewModelBase
 {
+    private bool _hasNotificationDot;
+
     public NavigationItemViewModel(string key, string title, Symbol icon, ViewModelBase pageViewModel)
     {
         Key = key;
@@ -16,5 +18,11 @@ public class NavigationItemViewModel : ViewModelBase
     public string Title { get; }
     public Symbol Icon { get; }
     public ViewModelBase PageViewModel { get; }
+
+    public bool HasNotificationDot
+    {
+        get => _hasNotificationDot;
+        set => SetProperty(ref _hasNotificationDot, value);
+    }
 }
 
