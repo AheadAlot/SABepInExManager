@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using FluentIcons.Common;
 using SABepInExManager.Models;
+using SABepInExManager.Services;
 
 namespace SABepInExManager.ViewModels;
 
@@ -18,11 +19,15 @@ public class ShellWindowViewModel : ViewModelBase
     private readonly LogsPageViewModel _logsPageViewModel;
     private readonly SettingsPageViewModel _settingsPageViewModel;
     private readonly AboutPageViewModel _aboutPageViewModel;
+    private readonly IAppUpdateService _appUpdateService = new GitHubReleaseUpdateService();
+    private readonly IAppUpdateStateStore _appUpdateStateStore = new AppConfigUpdateStateStore();
+    private readonly NavigationItemViewModel _settingsNavigationItem;
 
     private NavigationItemViewModel? _selectedNavigationItem;
     private ViewModelBase? _currentPageViewModel;
     private string _currentPageTitle = "设置";
     private string _globalStatusText = "就绪。";
+    private bool _isCheckingForAppUpdate;
 
     public ShellWindowViewModel()
     {
@@ -34,6 +39,7 @@ public class ShellWindowViewModel : ViewModelBase
         _logsPageViewModel = new LogsPageViewModel(_homePageViewModel);
         _settingsPageViewModel = new SettingsPageViewModel(_homePageViewModel);
         _aboutPageViewModel = new AboutPageViewModel();
+        _settingsNavigationItem = new NavigationItemViewModel("settings", "设置", Symbol.Settings, _settingsPageViewModel);
 
         NavigationItems =
         [
@@ -43,12 +49,13 @@ public class ShellWindowViewModel : ViewModelBase
             new NavigationItemViewModel("backup", "备份与恢复", Symbol.FolderOpen, _backupPageViewModel),
             new NavigationItemViewModel("diagnostics", "BepInEx 诊断", Symbol.Search, _diagnosticsPageViewModel),
             new NavigationItemViewModel("logs", "日志", Symbol.Notebook, _logsPageViewModel),
-            new NavigationItemViewModel("settings", "设置", Symbol.Settings, _settingsPageViewModel),
+            _settingsNavigationItem,
             new NavigationItemViewModel("about", "关于", Symbol.Info, _aboutPageViewModel),
         ];
 
         SelectedNavigationItem = NavigationItems[0];
         _homePageViewModel.PropertyChanged += OnHomePagePropertyChanged;
+        _settingsPageViewModel.ConfigureUpdateChecker(CheckForAppUpdatesAsync);
 
         SelectNavigationItemCommand = new RelayCommand<NavigationItemViewModel?>(SelectNavigationItem);
     }
@@ -97,6 +104,9 @@ public class ShellWindowViewModel : ViewModelBase
     {
         await _homePageViewModel.InitializeAsync();
         GlobalStatusText = _homePageViewModel.LatestLogMessage;
+
+        await InitializeUpdateStateAsync();
+        _ = CheckForAppUpdatesAsync(manualTrigger: false);
     }
 
     public async Task SaveConfigAsync()
@@ -120,6 +130,61 @@ public class ShellWindowViewModel : ViewModelBase
         }
 
         SelectedNavigationItem = item;
+    }
+
+    private async Task InitializeUpdateStateAsync()
+    {
+        var cached = await _appUpdateStateStore.LoadLastStateAsync();
+        if (cached is null)
+        {
+            return;
+        }
+
+        ApplyAppUpdateResult(cached);
+    }
+
+    private async Task CheckForAppUpdatesAsync(bool manualTrigger)
+    {
+        if (_isCheckingForAppUpdate)
+        {
+            return;
+        }
+
+        _isCheckingForAppUpdate = true;
+        _settingsPageViewModel.SetCheckingState(true);
+
+        try
+        {
+            var result = await _appUpdateService.CheckForUpdatesAsync(manualTrigger);
+            await _appUpdateStateStore.SaveLastStateAsync(result);
+
+            var effectiveResult = await _appUpdateStateStore.LoadLastStateAsync() ?? result;
+            ApplyAppUpdateResult(effectiveResult);
+        }
+        catch
+        {
+            _settingsPageViewModel.SetCheckingState(false);
+        }
+        finally
+        {
+            _isCheckingForAppUpdate = false;
+        }
+    }
+
+    private void ApplyAppUpdateResult(AppUpdateCheckResult result)
+    {
+        _settingsPageViewModel.ApplyUpdateResult(result);
+        _settingsNavigationItem.HasNotificationDot = result.UpdateInfo?.IsUpdateAvailable == true;
+
+        if (!result.Succeeded)
+        {
+            GlobalStatusText = "更新检查失败（详见设置页）。";
+            return;
+        }
+
+        GlobalStatusText = result.Status == AppUpdateStatus.UpdateAvailable
+            ? $"发现新版本：{result.UpdateInfo?.LatestVersion ?? "未知"}"
+            : "当前已是最新版本。";
     }
 }
 

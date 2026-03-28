@@ -14,7 +14,7 @@
         Foreground="#1A202C"
         MinWidth="1180"
         MinHeight="760"
-        Icon="/Assets/avalonia-logo.ico"
+        Icon="/Assets/logo.ico"
         Title="{Binding AppName}">
 
     <Design.DataContext>
@@ -30,12 +30,19 @@
                          SelectedItem="{Binding SelectedNavigationItem}">
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:NavigationItemViewModel">
-                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
                                 <icons:SymbolIcon Symbol="{Binding Icon}" FontSize="16" VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="1"
                                            Text="{Binding Title}"
                                            FontWeight="SemiBold"
                                            VerticalAlignment="Center"/>
+                                <Border Grid.Column="2"
+                                        Width="8"
+                                        Height="8"
+                                        CornerRadius="4"
+                                        Background="#EF4444"
+                                        VerticalAlignment="Center"
+                                        IsVisible="{Binding HasNotificationDot}"/>
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
