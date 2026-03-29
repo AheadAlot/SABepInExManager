@@ -7,14 +7,23 @@
     <Grid Margin="0" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
         <Border Classes="status-banner missing"
                 Classes.installed="{Binding HomePage.IsBepInExInstalled}">
-            <StackPanel Spacing="4">
-                <TextBlock Text="{Binding HomePage.DashboardPrimaryStatusText}"
-                           FontWeight="SemiBold"
-                           FontSize="15"/>
-                <TextBlock Text="{Binding HomePage.DashboardSecondaryStatusText}"
-                           Classes="secondary-text"
-                           TextWrapping="Wrap"/>
-            </StackPanel>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding HomePage.DashboardPrimaryStatusText}"
+                               FontWeight="SemiBold"
+                               FontSize="15"/>
+                    <TextBlock Text="{Binding HomePage.DashboardSecondaryStatusText}"
+                               Classes="secondary-text"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Classes="action-button primary-action"
+                        VerticalAlignment="Center"
+                        Content="安装 BepInEx"
+                        IsVisible="{Binding HomePage.ShowInstallBepInExButton}"
+                        Command="{Binding HomePage.InstallBepInExCommand}"/>
+            </Grid>
         </Border>
 
         <Border Grid.Row="1" Classes="card">

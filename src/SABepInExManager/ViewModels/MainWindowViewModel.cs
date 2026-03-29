@@ -121,6 +121,7 @@ public class HomePageViewModel : ViewModelBase
 
             OnPropertyChanged(nameof(BepInExStatusText));
             OnPropertyChanged(nameof(InstallBepInExButtonText));
+            OnPropertyChanged(nameof(ShowInstallBepInExButton));
             NotifyDashboardStatusChanged();
         }
     }
@@ -128,6 +129,7 @@ public class HomePageViewModel : ViewModelBase
     public string BepInExStatusText => IsBepInExInstalled ? "已安装" : "未安装";
     public string EnvironmentAvailabilityText => IsBepInExInstalled ? "可用" : "不可用";
     public string InstallBepInExButtonText => IsBepInExInstalled ? "重装" : "安装";
+    public bool ShowInstallBepInExButton => !IsBepInExInstalled;
     public string LatestLogMessage => Logs.Count > 0 ? Logs[^1].Message : "就绪。";
     public int ManagedModCount => Mods.Count;
     public int EnabledModCount => Mods.Count(m => m.IsEnabled);
