@@ -116,12 +116,20 @@
                                     <Run Text="{Binding LastCheckedText}"/>
                                 </TextBlock>
                             </StackPanel>
-                            <Button Grid.Column="2"
-                                    Classes="action-button primary-action"
-                                    VerticalAlignment="Center"
-                                    Content="检查更新"
-                                    Command="{Binding CheckForUpdatesCommand}"
-                                    IsEnabled="{Binding CanCheckForUpdates}"/>
+                            <StackPanel Grid.Column="2"
+                                        Orientation="Horizontal"
+                                        Spacing="6"
+                                        VerticalAlignment="Center">
+                                <Button Classes="action-button primary-action"
+                                        VerticalAlignment="Center"
+                                        Content="前往发布页"
+                                        Click="OnOpenReleasePageClicked"/>
+                                <Button Classes="action-button primary-action"
+                                        VerticalAlignment="Center"
+                                        Content="检查更新"
+                                        Command="{Binding CheckForUpdatesCommand}"
+                                        IsEnabled="{Binding CanCheckForUpdates}"/>
+                            </StackPanel>
                         </Grid>
                     </Border>
 

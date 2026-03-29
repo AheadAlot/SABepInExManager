@@ -1,7 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
+using SABepInExManager.Models;
 using SABepInExManager.Services;
 using SABepInExManager.ViewModels;
+using System.Diagnostics;
 using System.Linq;
 
 namespace SABepInExManager.Views;
@@ -149,6 +151,22 @@ public partial class SettingsPageView : UserControl
         }
 
         await vm.HomePage.UpdateAutoUpdaterAsync();
+    }
+
+    private void OnOpenReleasePageClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = $"{AppMetadata.RepositoryUrl}/releases",
+                UseShellExecute = true,
+            });
+        }
+        catch
+        {
+            // no-op
+        }
     }
 }
 
